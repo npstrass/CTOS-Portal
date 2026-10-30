@@ -1221,3 +1221,14 @@
   .ur strong { font-weight: 500; display: block; font-size: 0.88rem; }
   .ur span { display: block; font-size: 0.8rem; color: var(--muted); }
   .ur.none { color: var(--muted); font-size: 0.84rem; cursor: default; }
+
+  /* iPad and mobile Safari: the toolbar is inside 100vh, so use the dynamic viewport and let the nav scroll */
+  .sidebar { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+  .sidebar .nav { overflow-y: auto; min-height: 0; flex: 1 1 auto; -webkit-overflow-scrolling: touch; }
+  .sidebar-foot { flex: none; }
+  .shell { min-height: 100vh; min-height: 100dvh; }
+  .sheet { min-height: calc(100dvh - 56px); }
+  body.employee .sidebar { height: calc(100vh - 36px); height: calc(100dvh - 36px); }
+  .map-page { height: calc(100dvh - 168px); }
+  body.employee .map-page { height: calc(100dvh - 204px); }
+  @media (max-width: 900px) { .sidebar { height: auto; } }
