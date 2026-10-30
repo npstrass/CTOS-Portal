@@ -1232,3 +1232,20 @@
   .map-page { height: calc(100dvh - 168px); }
   body.employee .map-page { height: calc(100dvh - 204px); }
   @media (max-width: 900px) { .sidebar { height: auto; } }
+
+  /* Sidebar fixed to the viewport: its height never contributes to page scroll */
+  .shell { display: block; min-height: 0; padding-left: var(--sidebar-w); transition: padding-left .18s cubic-bezier(.2,.7,.2,1); }
+  body.nav-collapsed .shell { padding-left: var(--rail-w); }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); height: auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; transition: width .18s cubic-bezier(.2,.7,.2,1); z-index: 20; }
+  body.nav-collapsed .sidebar { width: var(--rail-w); }
+  body.employee .sidebar { top: 36px; height: auto; }
+  .sidebar .nav { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  .sidebar-foot { flex: none; margin-top: auto; padding-bottom: 20px; }
+  .main { min-height: 100vh; min-height: 100dvh; }
+  .sheet { min-height: 0; }
+  @media (max-width: 900px) { .shell { padding-left: 0; } .sidebar { display: none; } }
+  /* Brand text never wraps */
+  .brand-mark, .brand-tag { white-space: nowrap; }
+  .brand-mark-wrap { min-width: 0; overflow: hidden; }
+  .brand-tag { overflow: hidden; text-overflow: ellipsis; font-size: 0.68rem; letter-spacing: 0; }
+  .sidebar-foot small { white-space: nowrap; }
