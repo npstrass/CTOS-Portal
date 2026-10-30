@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders — CTOS One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="parts">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="mark" src="assets/emblem.png" alt="CTOS One">
+      <div class="brand-mark-wrap">
+        <div class="brand-mark"><span class="ctos">CTOS</span><span class="one">One</span></div>
+        <div class="brand-tag">One Source. Every Solution.</div>
+      </div>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation">
+        <svg viewBox="0 0 24 24"><path d="M11 6l-6 6 6 6"/><path d="M19 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+    <nav class="nav" aria-label="Primary"><a href="index.html" data-label="Home" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg><span class="label">Home</span></a><a href="fleet.html" data-label="My Fleet" aria-label="My Fleet"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg><span class="label">My Fleet</span></a><a href="service.html" data-label="Service" aria-label="Service"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0 5 5L10 20l-3-3Z"/><path d="M9 14l-3.5 3.5"/></svg><span class="label">Service</span></a><a href="parts.html" class="active" aria-current="page" data-label="Parts & Orders" aria-label="Parts & Orders"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/></svg><span class="label">Parts &amp; Orders</span></a><a href="billing.html" data-label="Billing" aria-label="Billing"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h6"/></svg><span class="label">Billing</span></a><a href="reports.html" data-label="Reports" aria-label="Reports"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M7 16v-5M12 16V7M17 16v-8"/></svg><span class="label">Reports</span></a><a href="team.html" data-label="Your Team" aria-label="Your Team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14c2.5 0 5 1.6 5 4.5"/></svg><span class="label">Your Team</span></a><a href="support.html" data-label="Support" aria-label="Support"><svg viewBox="0 0 24 24"><path d="M5 13a7 7 0 0 1 14 0"/><path d="M5 13v4a1 1 0 0 0 1 1h2v-6H6a1 1 0 0 0-1 1Z"/><path d="M19 13v4a1 1 0 0 1-1 1h-2v-6h2a1 1 0 0 1 1 1Z"/></svg><span class="label">Support</span></a></nav>
+    <div class="sidebar-foot">
+      <img class="emblem" src="assets/emblem.png" alt="Custom Truck One Source">
+      <small>Keep businesses<br>moving forward.</small>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <a href="index.html" class="m-brand" aria-label="CTOS One home">
+        <img src="assets/emblem.png" alt="">
+        <span class="brand-mark"><span class="ctos">CTOS</span><span class="one">One</span></span>
+      </a>
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/></svg>
+        <input type="search" id="search" placeholder="Search units, orders, invoices, people…" aria-label="Search" autocomplete="off">
+        <kbd>/</kbd>
+        <div class="search-results" id="search-results" hidden></div>
+      </label>
+      <div class="topbar-right">
+        <div class="notif-wrap">
+          <button class="icon-btn" id="bell" aria-label="Notifications" aria-expanded="false" aria-controls="notif">
+            <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+            <span class="dot" aria-hidden="true"></span>
+          </button>
+          <div class="notif" id="notif" role="dialog" aria-label="Notifications">
+            <div class="notif-head"><h4>Notifications</h4><button type="button" id="notif-markall">Mark all as read</button></div>
+            <div class="notif-tabs">
+              <button class="on" type="button" data-filter="all" id="ntab-all">All<span>0</span></button>
+              <button type="button" data-filter="alerts" id="ntab-alerts">Alerts<span>0</span></button>
+              <button type="button" data-filter="orders">Orders &amp; billing</button>
+            </div>
+            <div class="notif-list" id="notif-list"></div>
+            <div class="notif-foot"><a href="support.html">Notification settings</a></div>
+          </div>
+        </div>
+        <div class="account-wrap">
+          <button type="button" class="account" id="account" aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu">
+            <span class="avatar">MB</span>
+            <span class="account-text">
+              <span class="account-name">Mike Brown</span><br>
+              <span class="account-org">Shenandoah Line Services</span>
+            </span>
+            <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="account-menu" id="account-menu" role="menu" aria-label="Account">
+            <div class="menu-head"><strong id="menu-name"></strong><span id="menu-role"></span></div>
+            <a href="team.html" role="menuitem">Your team and users</a>
+            <a href="billing.html" role="menuitem">Billing and payment methods</a>
+            <a href="support.html" role="menuitem">Notification settings</a>
+            <div class="menu-sep"></div>
+            <a href="#" role="menuitem" id="menu-switch">Switch account</a>
+            <a href="#" role="menuitem" id="menu-reset">Reset demo data</a>
+            <div class="menu-sep"></div>
+            <a href="#" role="menuitem" id="menu-signout">Sign out</a>
+          </div>
+        </div>
+
+      </div>
+    </header>
+    <div class="sheet">
+    <main class="content" id="main" tabindex="-1">
+      <section class="title-row">
+        <div><h1>Orders</h1><p class="finding">Brake parts for <a href="unit.html?u=1076">Unit #1076</a> arrive Wednesday morning, ahead of its 11:00 inspection. Rental <a href="#rentals">R-418</a> is due back Thursday, and a freight quote to move <a href="unit.html?u=1122">Unit #1122</a> to Harrisonburg is ready to book. The AA55 on order is in production at Altec, on track for Dec 12.</p></div>
+        <div class="side"><a href="#" class="btn btn-primary" data-flow-cart><span data-cart-count>New order</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+      </section>
+
+      <nav class="tabs" role="tablist" aria-label="Order types">
+        <a href="#parts" role="tab" id="tab-parts" aria-controls="view-parts" aria-selected="true" class="on">Parts<b>4 open</b></a>
+        <a href="#trucks" role="tab" id="tab-trucks" aria-controls="view-trucks" aria-selected="false">Trucks<b>2 on order · 2 quotes</b></a>
+        <a href="#rentals" role="tab" id="tab-rentals" aria-controls="view-rentals" aria-selected="false">Rentals<b>3 active</b></a>
+        <a href="#freight" role="tab" id="tab-freight" aria-controls="view-freight" aria-selected="false">Freight<b>2 open</b></a>
+      </nav>
+
+      <section class="view" id="view-parts" role="tabpanel" aria-labelledby="tab-parts">
+        <div class="stack">
+          <section class="panel">
+            <div class="section-head"><h3>Open orders</h3><span class="head-note" id="parts-note"></span></div>
+            <div class="table-scroll">
+              <table class="fleet orders">
+                <thead><tr><th scope="col">Order</th><th scope="col">For</th><th scope="col">Ship to</th><th scope="col" class="num">Items</th><th scope="col" class="num">Total</th><th scope="col">Status</th><th scope="col" class="num">Arrives</th></tr></thead>
+                <tbody id="parts-rows"></tbody>
+              </table>
+            </div>
+            <div class="table-foot"><span>Select an order for items and tracking</span><a href="#">All orders, including delivered</a></div>
+          </section>
+          <div class="grid-21">
+            <section class="panel">
+              <div class="section-head"><h3>Reorder list</h3><a href="#">Edit list</a></div>
+              <div class="list" id="reorder-rows"></div>
+              <div class="table-foot"><span>6 parts you order most</span><a href="#" id="reorder-all">Add all at usual quantities</a></div>
+            </section>
+            <div class="stack">
+              <section class="panel">
+                <div class="section-head"><h3>Ship-to locations</h3></div>
+                <div class="list">
+                  <div class="row loc"><div><strong>Shenandoah yard</strong><p>1180 Garrisonville Rd, Stafford, VA · Receiving Mon to Fri 7:00 AM to 5:00 PM</p></div><div class="when"><strong>Default</strong><span>2 orders en route</span></div></div>
+                  <div class="row loc"><div><strong>CTOS Richmond</strong><p>Delivered to the service bay for work in progress</p></div><div class="when"><strong>Shop</strong><span>2 orders en route</span></div></div>
+                </div>
+              </section>
+              <section class="panel">
+                <div class="section-head"><h3>Your parts specialist</h3><a href="team.html">Everyone</a></div>
+                <div class="team"><span class="avatar parts">DO</span><div><div class="team-name">Dan Okafor</div><div class="team-role">Parts Specialist, Fredericksburg</div><div class="team-contact"><a href="tel:+15405550168"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(540) 555-0168</a><a href="mailto:dan.okafor@customtruck.com"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 7 9 6 9-6"/></svg>dan.okafor@customtruck.com</a></div></div></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-trucks" role="tabpanel" aria-labelledby="tab-trucks" hidden>
+        <div class="stack">
+        <section class="panel">
+          <div class="section-head"><h3>Quotes</h3><span class="head-note" id="quotes-note"></span></div>
+          <div class="table-scroll">
+            <table class="fleet orders">
+              <thead><tr><th scope="col">Quote</th><th scope="col">Configurations</th><th scope="col" class="num">Lines</th><th scope="col" class="num">Trucks</th><th scope="col">Stage</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Updated</th></tr></thead>
+              <tbody id="quote-rows"></tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>Each quote line is one truck configuration. Accepting a quote creates one order per truck. Pricing and terms come from Sarah through Salesforce.</span><button type="button" class="lnk" data-flow-quote>Request a quote</button></div>
+        </section>
+        <section class="panel">
+          <div class="section-head"><h3>On order</h3><span class="head-note" id="trucks-note"></span></div>
+          <div class="table-scroll">
+            <table class="fleet orders">
+              <thead><tr><th scope="col">Order</th><th scope="col">Truck</th><th scope="col">Placed</th><th scope="col">Build status</th><th scope="col" class="num">Price</th><th scope="col" class="num">Expected</th></tr></thead>
+              <tbody id="truck-rows"></tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>Select an order for the build sheet and schedule · your sales contact is Sarah Mitchell</span><a href="team.html">Contact Sarah</a></div>
+        </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-freight" role="tabpanel" aria-labelledby="tab-freight" hidden>
+        <section class="panel">
+          <div class="section-head"><h3>Freight and repositioning</h3><span class="head-note" id="freight-note"></span></div>
+          <div class="table-scroll">
+            <table class="fleet orders">
+              <thead><tr><th scope="col">Move</th><th scope="col">What</th><th scope="col" class="num">Miles</th><th scope="col">Stage</th><th scope="col" class="num">Price</th><th scope="col" class="num">Date</th></tr></thead>
+              <tbody id="freight-rows"></tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>Lowboy, driven delivery and tow, quoted and dispatched by CTOS Logistics. Jordan Wells is your contact.</span><button type="button" class="lnk" data-flow-freight>Request a freight quote</button></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-rentals" role="tabpanel" aria-labelledby="tab-rentals" hidden>
+        <section class="panel">
+          <div class="section-head"><h3>Active rentals</h3><span class="head-note" id="rentals-note"></span></div>
+          <div class="table-scroll">
+            <table class="fleet orders">
+              <thead><tr><th scope="col">Unit</th><th scope="col">Vehicle</th><th scope="col">Started</th><th scope="col" class="num">Due back</th><th scope="col" class="num">Day rate</th><th scope="col" class="num">To date</th><th scope="col"><span class="vh">Actions</span></th></tr></thead>
+              <tbody id="rental-rows"></tbody>
+            </table>
+          </div>
+          <div class="table-foot"><span>Returns to the Fredericksburg lot by 5:00 PM on the due date</span><a href="#">Rent a truck</a></div>
+        </section>
+      </section>
+    </main>
+    </div>
+  </div>
+</div>
+<nav class="tabbar" aria-label="Primary"><a href="index.html"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>Home</a><a href="fleet.html"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Fleet</a><a href="service.html"><svg viewBox="0 0 24 24"><path d="M14.5 5.5a4 4 0 0 0 5 5L10 20l-3-3Z"/><path d="M9 14l-3.5 3.5"/></svg>Service</a><a href="parts.html" class="active"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11L21 7H6.2"/><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/></svg>Orders</a><a href="billing.html"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h6"/></svg>Billing</a></nav>
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

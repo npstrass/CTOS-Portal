@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — CTOS One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body class="login" data-page="login">
+<main class="login-sheet" id="main">
+  <div class="brand-mark"><span class="ctos">CTOS</span><span class="one">One</span></div>
+  <div class="brand-tag">One Source. Every Solution.</div>
+  <h1>Sign in to your account</h1>
+  <form class="form" id="login-form">
+    <label>Email<input type="text" id="l-email" required value="mike@shenandoahfreight.com" autocomplete="username"></label>
+    <label>Password<input type="password" id="l-pass" required value="demo-password" autocomplete="current-password"></label>
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+  <div class="login-links"><a href="#" class="lnk">Forgot password</a><a href="support.html" class="lnk">Need an account?</a></div>
+  <section class="demo-accounts" aria-label="Demo accounts">
+    <h2>Demo accounts</h2>
+    <div class="list">
+      <button type="button" class="row" data-persona="mike"><span class="avatar">MB</span><div><strong>Mike Brown</strong><span>Shenandoah Freight Lines · 48 units, an established customer</span></div><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-persona="taylor"><span class="avatar svc">TR</span><div><strong>Taylor Reyes</strong><span>Blue Ridge Produce Co. · brand new, no trucks yet</span></div><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button type="button" class="row" data-persona="sarah"><span class="avatar am">SM</span><div><strong>Sarah Mitchell</strong><span>CTOS Account Manager · Mike’s account, with internal tools</span></div><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+    </div>
+  </section>
+  <p class="login-foot">Custom Truck One Source · Demo environment</p>
+</main>
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
