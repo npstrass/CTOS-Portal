@@ -357,7 +357,7 @@
     var v = vehicle(unit);
     var head = $('unit-head');
     if (!v) { head.innerHTML = '<h1>Unit not found</h1><p class="finding">That unit is not in your fleet. <a href="fleet-manage.html">See all units</a>.</p>'; return; }
-    document.title = 'Unit #' + v.unit + ' — CTOS One';
+    document.title = 'Unit #' + v.unit + ' -- CTOS One';
     var insp = unitInspections(v.unit), due = insp.map(function (i) { return docDays(i.due); }).filter(function (d) { return d <= 45; }).length;
     var camps = unitCampaigns(v.unit).filter(function (x) { return x.u.status === 'open'; }).length;
     var wos = S.workorders.filter(function (w) { return w.unit === v.unit && w.state !== 'done'; });
@@ -374,7 +374,7 @@
         '<div class="row svc3"><div><div class="unit">Next PM service</div><div class="job">' + num(v.odo) + ' mi now · interval ' + num(S.pmInterval) + ' mi · due at ' + num(v.nextPm) + ' mi</div></div><div class="when">' + dueText(v) + '<span>' + num(Math.max(0, pmLeft)) + ' mi left</span></div><span class="act"><button type="button" class="lnk" data-flow-schedule data-unit="' + v.unit + '" data-job="PM service">' + (booked.length ? 'Change' : 'Book') + '</button></span></div>' +
         booked.map(function (ap) { return '<div class="row svc3"><div><div class="unit">Booked · ' + esc(ap.job) + '</div><div class="job">' + esc(ap.loc) + '</div></div><div class="when"><strong>' + esc(ap.dateLabel) + '</strong><span>' + esc(ap.time) + '</span></div><span class="act"><a href="service.html" class="lnk">Details</a></span></div>'; }).join('') +
         insp.slice(0, 2).map(function (x) { return '<div class="row svc3"><div><div class="unit">' + esc(x.i.type) + '</div><div class="job">' + ROLE_NAME[x.i.comp] + ' · last ' + esc(x.i.done) + '</div></div><div class="when"><strong class="' + (x.d < 30 ? 'warn' : '') + '">' + (x.d < 0 ? 'Overdue ' + Math.abs(x.d) + ' d' : 'In ' + x.d + ' days') + '</strong><span>' + esc(x.i.due) + '</span></div><span class="act"><button type="button" class="lnk" data-flow-schedule data-unit="' + v.unit + '" data-job="' + esc(x.i.type) + '">Book</button></span></div>'; }).join('') + '</div>'; }
-    $('u-comps').innerHTML = (v.components || []).length ? v.components.map(function (c) { var exp = /expired|unknown/i.test(c.warranty); return '<tr><td class="id"><span class="ink">' + ROLE_NAME[c.role] + '</span></td><td class="for"><span class="ink">' + esc(c.year + ' ' + c.make + ' ' + c.model) + '</span><span class="spec">' + esc((c.capacity ? c.capacity + ' · ' : '') + c.spec) + '</span></td><td class="mono">' + esc(c.serial) + '</td><td class="num">' + (c.hours != null && c.role !== 'chassis' ? num(c.hours) : '<span class="muted">\u2014</span>') + '</td><td class="' + (exp ? 'muted' : '') + '">' + esc(c.warranty) + '</td></tr>'; }).join('') : '<tr><td colspan="5">' + emptyHtml('No as-built record yet. Add the chassis, body and equipment from Edit unit.') + '</td></tr>';
+    $('u-comps').innerHTML = (v.components || []).length ? v.components.map(function (c) { var exp = /expired|unknown/i.test(c.warranty); return '<tr><td class="id"><span class="ink">' + ROLE_NAME[c.role] + '</span></td><td class="for"><span class="ink">' + esc(c.year + ' ' + c.make + ' ' + c.model) + '</span><span class="spec">' + esc((c.capacity ? c.capacity + ' · ' : '') + c.spec) + '</span></td><td class="mono" data-label="Serial">' + esc(c.serial) + '</td><td class="num" data-label="Hours">' + (c.hours != null && c.role !== 'chassis' ? num(c.hours) : '<span class="muted">\u2014</span>') + '</td><td class="' + (exp ? 'muted' : '') + '" data-label="Warranty">' + esc(c.warranty) + '</td></tr>'; }).join('') : '<tr><td colspan="5">' + emptyHtml('No as-built record yet. Add the chassis, body and equipment from Edit unit.') + '</td></tr>';
     var briefEl = $('u-comps-brief'); if (briefEl) briefEl.innerHTML = (v.components || []).length ? v.components.map(function (c) { return '<div class="row fig"><span>' + ROLE_NAME[c.role] + '<small>' + esc(c.year + ' ' + c.make + ' ' + c.model) + ' · ' + esc(c.serial) + (c.hours != null && c.role !== 'chassis' ? ' · ' + num(c.hours) + ' h' : '') + '</small></span><b class="' + (/expired/i.test(c.warranty) ? 'muted' : '') + '">' + (/expired/i.test(c.warranty) ? 'Out of warranty' : esc(c.warranty.replace(/^.*? to /, 'Warranty to '))) + '</b></div>'; }).join('') : emptyHtml('No as-built record yet.');
     $('u-insp').innerHTML = inspectionsHtml(v.unit, false);
     $('u-camp').innerHTML = campaignsHtml(v.unit);
@@ -540,6 +540,8 @@
     if (v.nextIn === 0) return '<strong class="warn">Today</strong><span>' + esc(v.nextWhat || '') + '</span>';
     return '<strong' + (v.nextIn <= 7 ? ' class="warn"' : '') + '>In ' + v.nextIn + ' day' + (v.nextIn === 1 ? '' : 's') + '</strong><span>' + esc(v.nextWhat || '') + '</span>';
   }
+  function bookedFor(unit, jobRe) { return S.appointments.filter(function (ap) { return ap.unit === unit && (!jobRe || jobRe.test(ap.job)); }).sort(function (x, y) { return x.day - y.day; })[0] || null; }
+  function bookedCell(ap) { return '<strong class="booked">Booked</strong><span>' + esc(ap.dateLabel) + ' · ' + esc(ap.time) + '</span>'; }
   function emptyHtml(text) { return '<div class="empty">' + esc(text) + '</div>'; }
 
   /* ---------- toast ---------- */
@@ -777,16 +779,30 @@
     });
   }
 
-  function flowWorkorder(w, row) {
+  function flowAllWorkorders() {
+    var active = S.workorders.filter(function (w) { return w.state !== 'done'; });
+    var done = S.serviceHistory.slice(0, 8);
+    function row(w) { return '<button type="button" class="row wo-row" data-wo-all="' + w.id + '"><div><div class="unit">Unit #' + w.unit + '</div><div class="job">' + esc((vehicle(w.unit) || {}).model || '') + '</div><div class="job">' + esc(w.where) + ' · ' + esc(w.stages[w.stage][0]) + '</div></div><div class="when"><strong>' + esc(w.stages[w.stage][1] || w.stages[w.stage][0]) + '</strong><span>' + (w.stages[w.stage + 1] ? 'Next: ' + esc(w.stages[w.stage + 1][0]) : 'Ready') + '</span></div><span class="act">Details</span></button>'; }
+    openDrawer({
+      kind: 'Work orders', title: 'All work orders', meta: active.length + ' open · ' + S.serviceHistory.length + ' completed in October',
+      body: '<h4 class="dr-sub">Open</h4><div class="list">' + (active.length ? active.map(row).join('') : emptyHtml('Nothing in the shop right now.')) + '</div>' +
+        '<h4 class="dr-sub">Completed</h4><div class="list">' + done.map(function (h) { return '<div class="row fig"><span>Unit #' + h.unit + ' · ' + esc(h.work) + '<small>' + esc(h.date) + ' · ' + esc(h.loc) + ' · <a href="billing.html" class="lnk">' + h.inv + '</a></small></span><b>' + money(h.cost) + '</b></div>'; }).join('') + '</div>',
+      foot: '<a href="billing.html" class="lnk">Invoices</a><a href="reports.html#spend" class="lnk">Service spend report</a>',
+      after: function () { qsa('[data-wo-all]').forEach(function (b) { b.addEventListener('click', function () { var w = S.workorders.filter(function (x) { return x.id === b.getAttribute('data-wo-all'); })[0]; if (w) flowWorkorder(w, null, true); }); }); }
+    });
+  }
+
+  function flowWorkorder(w, row, fromAll) {
     var total = woTotal(w);
     openDrawer({
       kind: 'In the shop · ' + w.stages[w.stage][0], title: 'Unit #' + w.unit, meta: (vehicle(w.unit) || {}).model + ' · ' + w.where, warn: w.state === 'waiting',
       body: '<p class="dr-summary">' + esc(w.summary) + '</p><ol class="stages" aria-label="Work order progress">' + stagesHtml(w.stages, w.stage) + '</ol>' +
         '<div class="list li-list">' + w.items.map(function (it) { return '<div class="row fig li"><span>' + esc(it[0]) + '<small>' + esc(it[1]) + '</small></span><b>' + money(it[2]) + '</b></div>'; }).join('') +
         '<div class="row fig total"><span>Estimate<small>Parts and labor, before tax. Your advisor confirms the work with you by phone.</small></span><b>' + money(total) + '</b></div></div>',
-      foot: '<a href="team.html" class="lnk">Ask the advisor a question</a>' + (isEmployee() ? '<a href="#" class="lnk">Open in the shop system</a>' : ''),
+      foot: (fromAll ? '<button type="button" class="lnk" id="wo-back">\u2190 All work orders</button>' : '') + '<a href="team.html" class="lnk">Ask the advisor a question</a>' + (isEmployee() ? '<a href="#" class="lnk">Open in the shop system</a>' : ''),
       row: row,
       after: function () {
+        var bk = $('wo-back'); if (bk) bk.addEventListener('click', function () { flowAllWorkorders(); });
         var rm = $('wo-remind'); if (rm) rm.addEventListener('click', function () { S.accountNotes.unshift({ when: 'Today', who: personaInfo().name, text: 'Sent approval reminder for Unit #' + w.unit + ' (' + money(total) + ').' }); save(); closeDrawer(); toast('Reminder sent to ' + S.user.name + '.'); });
         var b = $('wo-approve'); if (!b) return;
         b.addEventListener('click', function () {
@@ -1180,6 +1196,7 @@
     $('svc-finding').innerHTML = inwork.length || nextUp.length ? inwork.length + ' unit' + (inwork.length === 1 ? ' is' : 's are') + ' in the shop' + (overdue.length ? ', <a href="#" data-unit-link="' + overdue[0].unit + '">Unit #' + overdue[0].unit + '</a> is overdue for its ' + esc((overdue[0].nextWhat || 'service').replace(/,.*$/, '').toLowerCase()) : '') + (nextUp.length ? ', and the next service due is <a href="#" data-unit-link="' + nextUp[0].unit + '">Unit #' + nextUp[0].unit + '</a> ' + (nextUp[0].nextIn === 0 ? 'today' : 'in ' + nextUp[0].nextIn + ' days') : '') + '.' + (S.unscheduled.length ? ' The diagnostic for <a href="#" data-unit-link="' + S.unscheduled[0].unit + '">Unit #' + S.unscheduled[0].unit + '</a> still needs a time.' : '') : false ? waiting.length + ' estimate' + (waiting.length > 1 ? 's' : '') + ' totaling ' + money(wt) + ' ' + (waiting.length > 1 ? 'are' : 'is') + ' waiting on your approval, the largest for <a href="#" data-unit-link="' + waiting[0].unit + '">Unit #' + waiting[0].unit + '</a>.' + (S.unscheduled.length ? ' The diagnostic for <a href="#" data-unit-link="' + S.unscheduled[0].unit + '">Unit #' + S.unscheduled[0].unit + '</a> still needs a time.' : '') : 'Nothing is waiting on you. ' + inwork.length + ' job' + (inwork.length === 1 ? ' is' : 's are') + ' in work and ' + S.appointments.length + ' appointments are booked.';
     function woRow(w) { return '<button type="button" class="row wo-row" data-wo="' + w.id + '" aria-haspopup="dialog"><div><div class="unit">Unit #' + w.unit + '<span class="sub"> · ' + esc((vehicle(w.unit) || {}).model || '') + '</span></div><div class="job">' + esc(w.where) + ' · ' + esc(w.stages[w.stage][0]) + (w.state === 'waiting' ? ' · estimate ' + money(woTotal(w)) : '') + '</div></div><div class="when"><strong>' + esc(w.stages[w.stage][1] || w.stages[w.stage][0]) + '</strong><span>' + (w.stages[w.stage + 1] ? 'Next: ' + esc(w.stages[w.stage + 1][0]) : 'Ready') + '</span></div><span class="act">Details</span></button>'; }
     $('svc-inwork').innerHTML = inwork.length ? inwork.map(woRow).join('') : emptyHtml('Nothing in the shop right now.');
+    var allLink = document.querySelector('[data-flow-all-wo]'); if (allLink) once(allLink, 'click', function (e) { e.preventDefault(); flowAllWorkorders(); });
     qsa('[data-wo]').forEach(function (b) { b.addEventListener('click', function () { var w = S.workorders.filter(function (x) { return x.id === b.getAttribute('data-wo'); })[0]; flowWorkorder(w, b); }); });
     // week strip
     $('svc-week').innerHTML = S.week.map(function (d) {
@@ -1195,12 +1212,12 @@
     $('svc-maint').innerHTML = maint.map(function (v) {
       var left = v.nextPm - v.odo, pct = Math.max(2, 100 - left / S.pmInterval * 100);
       var booked = S.appointments.filter(function (a) { return a.unit === v.unit; })[0];
-      return '<div class="row maint' + (left <= 1000 ? ' due' : '') + '"><div><div class="unit">Unit #' + v.unit + '</div><div class="job">' + num(v.odo) + ' mi · next PM at ' + num(v.nextPm) + ' mi</div></div><div class="track"><i style="width:' + pct.toFixed(0) + '%"></i></div><div class="when"><strong>' + num(left) + ' mi left</strong><span>' + (booked ? 'Booked ' + esc(booked.dateLabel) : (v.state === 'shop' ? 'In shop now' : '<button type="button" class="lnk" data-flow-schedule data-unit="' + v.unit + '" data-job="PM service">Book it</button>')) + '</span></div></div>';
+      return '<div class="row maint' + (left <= 1000 ? ' due' : '') + '"><div><div class="unit">Unit #' + v.unit + '</div><div class="job">' + num(v.odo) + ' mi · next PM at ' + num(v.nextPm) + ' mi</div></div><div class="track"><i style="width:' + pct.toFixed(0) + '%"></i></div><div class="when">' + (booked ? bookedCell(booked) : '<strong>' + num(left) + ' mi left</strong><span>' + (v.state === 'shop' ? 'In shop now' : '<button type="button" class="lnk" data-flow-schedule data-unit="' + v.unit + '" data-job="PM service">Book it</button>') + '</span>') + '</div></div>';
     }).join('');
     var di = dueInspections(45);
-    if ($('svc-insp')) $('svc-insp').innerHTML = di.length ? di.map(function (x) { return '<div class="row maint' + (x.days < 14 ? ' due' : '') + '"><div><div class="unit">Unit #' + x.i.unit + '<span class="sub"> · ' + esc(x.i.type) + '</span></div><div class="job">' + ROLE_NAME[x.i.comp] + ' · last ' + esc(x.i.done) + ' by ' + esc(x.i.by) + '</div></div><div class="track"><i style="width:' + Math.max(2, Math.min(100, 100 - x.days / 365 * 100)).toFixed(0) + '%"></i></div><div class="when"><strong>' + (x.days < 0 ? 'Overdue' : 'Due ' + esc(x.i.due)) + '</strong><span><button type="button" class="lnk" data-flow-schedule data-unit="' + x.i.unit + '" data-job="' + esc(x.i.type) + '">Book it</button></span></div></div>'; }).join('') : emptyHtml('No inspections due in the next 45 days.');
+    if ($('svc-insp')) $('svc-insp').innerHTML = di.length ? di.map(function (x) { return '<div class="row maint' + (x.days < 14 ? ' due' : '') + '"><div><div class="unit">Unit #' + x.i.unit + '<span class="sub"> · ' + esc(x.i.type) + '</span></div><div class="job">' + ROLE_NAME[x.i.comp] + ' · last ' + esc(x.i.done) + ' by ' + esc(x.i.by) + '</div></div><div class="track"><i style="width:' + Math.max(2, Math.min(100, 100 - x.days / 365 * 100)).toFixed(0) + '%"></i></div><div class="when">' + (function () { var ap = bookedFor(x.i.unit, new RegExp(x.i.type.split(' ')[0], 'i')) || bookedFor(x.i.unit, /inspection|dielectric/i); return ap ? bookedCell(ap) + '<span><button type="button" class="lnk" data-flow-schedule data-unit="' + x.i.unit + '" data-job="' + esc(x.i.type) + '">Change</button></span>' : '<strong>' + (x.days < 0 ? 'Overdue' : 'Due ' + esc(x.i.due)) + '</strong><span><button type="button" class="lnk" data-flow-schedule data-unit="' + x.i.unit + '" data-job="' + esc(x.i.type) + '">Book it</button></span>'; })() + '</div></div>'; }).join('') : emptyHtml('No inspections due in the next 45 days.');
     var oc = openCampaigns();
-    if ($('svc-camp')) $('svc-camp').innerHTML = oc.length ? oc.map(function (x) { return '<div class="row insp"><div><strong>Unit #' + x.u.unit + ' · ' + esc(x.c.title) + '<span class="sub"> · ' + ROLE_NAME[x.c.scope] + '</span></strong><span>' + esc(x.c.severity) + ' ' + esc(x.c.ref) + ' · ' + esc(x.c.maker) + ' · ' + esc(x.c.remedy) + '</span></div><div class="when"><strong class="warn">Open</strong><span><button type="button" class="lnk" data-flow-schedule data-unit="' + x.u.unit + '" data-job="Campaign work, ' + esc(x.c.ref) + '">Schedule</button></span></div></div>'; }).join('') : emptyHtml('No open recalls or bulletins across the fleet.');
+    if ($('svc-camp')) $('svc-camp').innerHTML = oc.length ? oc.map(function (x) { return '<div class="row insp"><div><strong>Unit #' + x.u.unit + ' · ' + esc(x.c.title) + '<span class="sub"> · ' + ROLE_NAME[x.c.scope] + '</span></strong><span>' + esc(x.c.severity) + ' ' + esc(x.c.ref) + ' · ' + esc(x.c.maker) + ' · ' + esc(x.c.remedy) + '</span></div><div class="when">' + (function () { var ap = bookedFor(x.u.unit, /campaign|recall|diagnostic/i); return ap ? bookedCell(ap) + '<span>Open until completed</span>' : '<strong class="warn">Open</strong><span><button type="button" class="lnk" data-flow-schedule data-unit="' + x.u.unit + '" data-job="Campaign work, ' + esc(x.c.ref) + '">Schedule</button></span>'; })() + '</div></div>'; }).join('') : emptyHtml('No open recalls or bulletins across the fleet.');
     var exd = expiringDocs(21);
     if ($('svc-docs')) $('svc-docs').innerHTML = exd.length ? exd.map(function (x) { return '<div class="row fig"><span>Unit #' + x.d.unit + ' · ' + esc(x.d.kind) + '<small>' + (x.days < 0 ? 'Expired ' : 'Expires ') + esc(x.d.expires) + '</small></span><b class="' + (x.days < 14 ? 'warn' : '') + '">' + (x.days < 0 ? 'Expired' : x.days + ' days') + '</b></div>'; }).join('') : emptyHtml('No documents expire in the next three weeks.');
     $('svc-hist').innerHTML = S.serviceHistory.map(function (h) { return '<tr><td>' + h.date + '</td><td class="unit-cell"><strong><a href="unit.html?u=' + h.unit + '" class="row-btn">Unit #' + h.unit + '</a></strong></td><td>' + (ROLE_NAME[h.comp] || '') + '</td><td>' + esc(h.work) + '</td><td>' + esc(h.loc) + '</td><td class="num">' + money(h.cost) + '</td><td><a href="billing.html" class="lnk">' + h.inv + '</a></td></tr>'; }).join('');
@@ -1321,13 +1338,13 @@
       return '<a href="#' + p.id + '" class="post-card' + (big ? ' big' : '') + '"><div class="pc-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"></div><div class="pc-body"><span class="post-tag">' + esc(p.tag) + ' · ' + p.date + '</span><h2>' + esc(p.title) + '</h2>' + (big ? '<p>' + esc(p.summary) + '</p>' : '') + '<span class="pc-meta">' + esc(p.author.split(',')[0]) + ' · ' + p.read + '</span></div></a>';
     }
     function index() {
-      document.title = 'News — CTOS One';
+      document.title = 'News -- CTOS One';
       $('news-head').innerHTML = '<div><h1>News</h1><p class="finding">Notes from the people who service your fleet: what we are seeing in the shops, what to check before the season turns, and what the telematics numbers mean.</p></div>';
       $('news-body').innerHTML = '<div class="post-index">' + card(S.posts[0], true) + '<div class="post-grid">' + S.posts.slice(1).map(function (p) { return card(p, false); }).join('') + '</div></div>';
     }
     function article(id) {
       var p = S.posts.filter(function (x) { return x.id === id; })[0]; if (!p) { index(); return; }
-      document.title = p.title + ' — CTOS One';
+      document.title = p.title + ' -- CTOS One';
       $('news-head').innerHTML = '<div><a href="#" class="lnk back">All news</a></div>';
       var body = p.body.map(function (t, i) { return '<p>' + esc(t) + '</p>' + (i === 1 && p.pull ? '<blockquote class="pull">' + esc(p.pull) + '</blockquote>' : ''); }).join('');
       $('news-body').innerHTML = '<article class="post"><header class="post-head"><span class="post-tag">' + esc(p.tag) + '</span><h1>' + esc(p.title) + '</h1><p class="post-lead">' + esc(p.summary) + '</p><p class="post-meta">' + esc(p.author) + ' · ' + p.date + ' · ' + p.read + ' read</p></header>' +
@@ -1369,7 +1386,7 @@
       tabs.forEach(function (t) { var on = t.getAttribute('href') === '#' + name; t.classList.toggle('on', on); t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; if (on && focus) t.focus(); });
       views.forEach(function (v) { v.hidden = v.id !== 'view-' + name; });
     }
-    function fromHash() { var h = (location.hash || '#parts').slice(1); if (h === 'quotes') h = 'trucks'; show(['parts', 'trucks', 'rentals', 'freight', 'overview', 'compliance', 'service', 'parts-unit', 'documents'].indexOf(h) >= 0 ? h : (tabs[0].getAttribute('href') || '#parts').slice(1), false); }
+    function fromHash() { var first = (tabs[0].getAttribute('href') || '#parts').slice(1); var h = (location.hash || '#' + first).slice(1); if (h === 'quotes') h = 'trucks'; var known = tabs.map(function (t) { return (t.getAttribute('href') || '').slice(1); }); show(known.indexOf(h) >= 0 ? h : first, false); }
     tabs.forEach(function (t, i) { t.addEventListener('keydown', function (e) { var j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : -1; if (j < 0 || j >= tabs.length) return; e.preventDefault(); location.hash = tabs[j].getAttribute('href'); show(tabs[j].getAttribute('href').slice(1), true); }); });
     window.addEventListener('hashchange', fromHash); fromHash();
   }

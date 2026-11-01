@@ -1345,3 +1345,34 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .emp-bar { position: sticky; top: 0; z-index: 1051; padding: 7px 14px; font-size: 0.76rem; }
   body.employee .topbar { top: 0; }
 }
+
+/* Unit page on phones: as-built components become cards, odd stat tile spans */
+@media (max-width: 900px) {
+  .stats > .stat-c:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; padding-right: 0; }
+  .stats > .stat-c:last-child:nth-child(odd) .v { font-size: 1.45rem; }
+  .comps-table, .comps-table thead, .comps-table tbody, .comps-table tr, .comps-table td { display: block; width: auto !important; }
+  .comps-table { min-width: 0 !important; }
+  .comps-table thead { display: none; }
+  .comps-table tr { padding: 14px 0 12px; border-bottom: 1px solid var(--line); }
+  .comps-table tr:last-child { border-bottom: 0; }
+  .comps-table td { padding: 0 !important; border: 0 !important; white-space: normal !important; overflow: visible !important; }
+  .comps-table td.id { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px; }
+  .comps-table td.id .ink { color: var(--muted); font-weight: 500; }
+  .comps-table td.for .ink { font-weight: 500; }
+  .comps-table td.for .spec { margin: 3px 0 10px; }
+  .comps-table td[data-label] { display: inline-block; vertical-align: top; width: 33.33% !important; padding-right: 10px !important; box-sizing: border-box; text-align: left; font-size: 0.84rem; }
+  .comps-table td[data-label]::before { content: attr(data-label); display: block; font-family: var(--font, 'Instrument Sans', sans-serif); font-size: 0.72rem; color: var(--muted); margin-bottom: 2px; }
+  .comps-table td.mono[data-label] { width: 42% !important; }
+  .comps-table td.num[data-label] { width: 20% !important; }
+  .comps-table td[data-label]:last-child { width: 38% !important; padding-right: 0 !important; }
+  .comps-table td.mono[data-label] { font-size: 0.78rem; overflow-wrap: anywhere; }
+  .comps-table td.num[data-label] { text-align: left; }
+  .comps-table td[colspan] { display: block; width: auto !important; }
+  .tabs { position: relative; }
+  .title-row .finding { max-width: none; }
+}
+.dr-sub { font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 18px 0 4px; }
+.dr-sub:first-child { margin-top: 0; }
+.drawer .list .wo-row { width: 100%; }
+.drawer .row.fig > span small { display: block; margin-top: 2px; }
+.drawer .wo-row .when { text-align: right; flex: none; }
