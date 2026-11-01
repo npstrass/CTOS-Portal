@@ -98,7 +98,6 @@
     z-index: 30;
   }
   body.nav-collapsed .nav a:hover::after, body.nav-collapsed .nav a:focus-visible::after { opacity: 1; }
-  body.nav-collapsed .sidebar-foot { display: none; }
 
   .brand-mark {
     font-size: 1.6rem;
@@ -310,7 +309,6 @@
     gap: 0;
     padding: 28px 40px;
   }
-  .stat { padding: 16px 0; }
   .stat:nth-child(odd) { padding-right: 28px; border-right: 1px solid rgba(255,255,255,0.12); }
   .stat:nth-child(even) { padding-left: 28px; }
   .stat:nth-child(-n+2) { border-bottom: 1px solid rgba(255,255,255,0.12); }
@@ -1024,7 +1022,6 @@
   @media (max-width: 1240px) { table.comps-table th:nth-child(5), table.comps-table td:nth-child(5) { width: 170px; } }
 
   /* Map: quieter tiles, pins that read */
-  .map-legend i { width: 9px; height: 9px; box-shadow: 0 0 0 2px #fff; }
 
   /* Map pings */
   .ping-wrap { background: none; border: 0; }
@@ -1249,3 +1246,89 @@
   .brand-mark-wrap { min-width: 0; overflow: hidden; }
   .brand-tag { overflow: hidden; text-overflow: ellipsis; font-size: 0.68rem; letter-spacing: 0; }
   .sidebar-foot small { white-space: nowrap; }
+
+
+/* =====================================================================
+   Layout hardening (applies to every page). Grid tracks never grow past the
+   viewport, panels clip their own overflow, maps keep their z-indexes inside.
+   ===================================================================== */
+html, body { max-width: 100%; overflow-x: hidden; }
+.main, .sheet, .content, .panel, .stack, .col { min-width: 0; }
+.grid-21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.grid-11 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.fleet-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
+.body-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
+.table-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.map-wrap, .map-page { position: relative; isolation: isolate; z-index: 0; }
+.map-wrap .leaflet-container, .map-page .leaflet-container, .maplibregl-map { z-index: 0; }
+.tabbar { z-index: 1100; }
+.topbar { z-index: 1050; }
+.filters, .tabs, .due-tabs, .side-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
+.filters a, .tabs a { white-space: nowrap; flex: none; }
+.title-row .finding { overflow-wrap: anywhere; }
+
+@media (max-width: 1240px) {
+  .grid-21, .grid-11, .fleet-grid, .body-grid { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .shell { padding-left: 0; display: block; }
+  .sidebar { display: none; }
+  .topbar { position: sticky; top: 0; height: 52px; padding: 0 12px 0 14px; gap: 8px; }
+  .m-brand { display: flex; align-items: center; gap: 8px; margin-right: auto; min-width: 0; }
+  .m-brand img { width: 26px; height: 26px; }
+  .m-brand .brand-mark { font-size: 1.1rem; white-space: nowrap; }
+  .search { flex: 0 0 auto; width: 36px; margin: 0; padding: 0; justify-content: center; background: transparent; border: 0; }
+  .search input, .search kbd { display: none; }
+  .search:focus-within { position: fixed; left: 8px; right: 8px; top: 8px; width: auto; height: 36px; background: var(--paper); border: 1px solid var(--line); padding: 0 10px; z-index: 1060; }
+  .search:focus-within input { display: block; }
+  .topbar-right { gap: 2px; }
+  .account { padding: 0 2px; height: 36px; }
+  .account-text, .account svg { display: none; }
+  .content { padding: 20px 14px calc(84px + env(safe-area-inset-bottom)); gap: 22px; }
+  .sheet { margin: 0; border: 0; border-radius: 0; min-height: 0; }
+  .title-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .title-row .side { align-items: flex-start; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+  .title-row h1 { font-size: 1.45rem; }
+  .title-row .finding { font-size: 0.92rem; }
+  .greeting h1 { font-size: 1.45rem; }
+  .greeting-date { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-c { padding: 14px 0; margin-right: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .stat-c:nth-child(odd) { padding-right: 14px; border-right: 1px solid var(--line); }
+  .stat-c:nth-child(even) { padding-left: 14px; }
+  .stat-c:nth-last-child(-n+2) { border-bottom: 0; }
+  .stat-c .v { font-size: 1.45rem; }
+  .panel .section-head { padding: 14px 14px 0; }
+  .panel .section-head h3 { font-size: 0.95rem; }
+  .head-note { display: none; }
+  .list { padding: 0 4px 6px; }
+  .row { padding: 11px 10px; }
+  .table-foot { padding: 12px 14px 14px; flex-wrap: wrap; gap: 6px; }
+  .table-scroll, .filters, .due-tabs { padding-left: 14px; padding-right: 14px; }
+  .tabs { margin: 0 14px !important; gap: 18px; }
+  .tabs a b { display: none; }
+  table.fleet, table.orders { min-width: 640px; }
+  .map-wrap { margin: 10px 14px 14px; }
+  #map { height: 300px; }
+  .map-page { height: auto; grid-template-columns: 1fr; }
+  .map-side { max-height: 320px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .map-page #map { height: 360px; }
+  .week { grid-template-columns: 1fr; margin: 10px 14px 6px; }
+  .comps, .comp-pad, .rep-figs, .team-grid, .trucks, .post { padding-left: 14px; padding-right: 14px; margin-left: 0; margin-right: 0; }
+  .rep-figs, .team-grid { margin: 6px 14px 10px; padding: 0; }
+  .featured { grid-template-columns: 1fr; }
+  .featured-copy { padding: 26px 18px 22px; }
+  .featured h2 { font-size: 1.4rem; max-width: none; }
+  .featured-stats { padding: 4px 18px 10px; border-left: 0; border-top: 1px solid rgba(255,255,255,0.12); }
+  .actions { grid-template-columns: 1fr 1fr; }
+  .action span { display: none; }
+  .news { grid-template-columns: 1fr; }
+  .drawer { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-width: none; max-height: 90dvh; border-radius: 16px 16px 0 0; transform: translateY(16px); }
+  .drawer.open { transform: none; }
+  .notif, .account-menu, .search-results { position: fixed; top: 52px; left: 8px; right: 8px; width: auto; }
+  .emp-bar { position: sticky; top: 0; z-index: 1051; padding: 7px 14px; font-size: 0.76rem; }
+  body.employee .topbar { top: 0; }
+}
