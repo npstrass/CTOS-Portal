@@ -1258,7 +1258,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .grid-11 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .fleet-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
 .body-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
-.table-scroll { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.table-scroll { position: relative; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+.vh { clip-path: inset(50%); left: 0; top: 0; }
+.panel, .list, .map-side, .week, .comps, .rep-body { position: relative; }
+.grid-21[style], .grid-11[style] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.rep-grid { grid-template-columns: 320px minmax(0, 1fr); }
+@media (max-width: 1240px) { .rep-grid { grid-template-columns: minmax(0, 1fr); } }
 .map-wrap, .map-page { position: relative; isolation: isolate; z-index: 0; }
 .map-wrap .leaflet-container, .map-page .leaflet-container, .maplibregl-map { z-index: 0; }
 .tabbar { z-index: 1100; }
@@ -1269,7 +1274,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .title-row .finding { overflow-wrap: anywhere; }
 
 @media (max-width: 1240px) {
-  .grid-21, .grid-11, .fleet-grid, .body-grid { grid-template-columns: minmax(0, 1fr); }
+  .grid-21, .grid-11, .fleet-grid, .body-grid, .grid-21[style], .grid-11[style] { grid-template-columns: minmax(0, 1fr) !important; }
   .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
@@ -1300,6 +1305,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .stat-c:nth-child(odd) { padding-right: 14px; border-right: 1px solid var(--line); }
   .stat-c:nth-child(even) { padding-left: 14px; }
   .stat-c:nth-last-child(-n+2) { border-bottom: 0; }
+  .stat-c:last-child { border-right: 0; }
   .stat-c .v { font-size: 1.45rem; }
   .panel .section-head { padding: 14px 14px 0; }
   .panel .section-head h3 { font-size: 0.95rem; }
@@ -1319,6 +1325,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
   .week { grid-template-columns: 1fr; margin: 10px 14px 6px; }
   .comps, .comp-pad, .rep-figs, .team-grid, .trucks, .post { padding-left: 14px; padding-right: 14px; margin-left: 0; margin-right: 0; }
   .rep-figs, .team-grid { margin: 6px 14px 10px; padding: 0; }
+  .rep-figs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rep-figs div { padding: 12px 10px 12px 0; margin-right: 10px; border-right: 1px solid var(--line); border-bottom: 0; }
+  .rep-figs div:last-child { border-right: 0; margin-right: 0; }
+  .rep-figs b { font-size: 1.2rem; }
+  .rep-figs span { font-size: 0.74rem; }
+  .hbar { grid-template-columns: 78px minmax(0, 1fr) 72px; gap: 8px; font-size: 0.8rem; }
+  .hbar .val small { margin-left: 3px; }
   .featured { grid-template-columns: 1fr; }
   .featured-copy { padding: 26px 18px 22px; }
   .featured h2 { font-size: 1.4rem; max-width: none; }
