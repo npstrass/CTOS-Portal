@@ -631,8 +631,11 @@
   }
   function initBell() {
     var bell = $('bell'), panel = $('notif'); if (!bell || !panel) return;
-    function close() { panel.classList.remove('open'); bell.setAttribute('aria-expanded', 'false'); }
-    bell.addEventListener('click', function (e) { e.stopPropagation(); var open = panel.classList.toggle('open'); bell.setAttribute('aria-expanded', open); });
+    function close() { panel.classList.remove('open'); bell.setAttribute('aria-expanded', 'false'); document.body.classList.remove('notif-open'); }
+    bell.addEventListener('click', function (e) { e.stopPropagation(); var open = panel.classList.toggle('open'); bell.setAttribute('aria-expanded', open); document.body.classList.toggle('notif-open', open); });
+    // Close button, shown on phones where the panel takes the full screen
+    var head = panel.querySelector('.notif-head');
+    if (head && !$('notif-close')) { var x = document.createElement('button'); x.type = 'button'; x.id = 'notif-close'; x.className = 'notif-close'; x.setAttribute('aria-label', 'Close notifications'); x.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'; head.appendChild(x); x.addEventListener('click', close); }
     document.addEventListener('click', function (e) { if (!panel.contains(e.target)) close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
     $('notif-markall').addEventListener('click', function () { S.notifications.forEach(function (n) { n.read = true; }); save(); renderBell(); });
