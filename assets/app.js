@@ -884,38 +884,85 @@
     save(); toast(part.d + ' added. ' + cartCount() + ' items in your order.'); renderCartBadge();
   }
   function renderCartBadge() { qsa('[data-cart-count]').forEach(function (n) { var c = cartCount(); n.textContent = c ? 'New order · ' + c + ' items' : 'New order'; }); }
-  function flowCart() {
-    function body() {
-      if (!S.cart.length) return emptyHtml('Your order is empty. Add parts from the reorder list, or search for a part number.');
-      return '<div class="list li-list cart">' + S.cart.map(function (c, i) {
+  // Everything orderable: the reorder list, every as-built BOM, and common chassis service parts.
+  var CHASSIS_PARTS = [['FL-OIL-15', 'Oil filter, Cummins B6.7', 34], ['FL-FUEL-9', 'Fuel filter kit, Cummins B6.7', 52], ['FL-AIR-22', 'Air filter, primary', 61], ['DEF-25', 'DEF fluid, 2.5 gal', 18], ['BRK-PAD-M2', 'Brake pads, front axle, M2 106', 184], ['WIP-28', 'Wiper blades, 28 in, pair', 24], ['BLB-H11', 'Headlamp bulb, H11', 16], ['MRK-LED', 'Marker lamp, LED amber', 22], ['PTO-SW', 'PTO switch, dash', 68], ['HYD-AW46', 'Hydraulic oil AW46, 5 gal', 89]];
+  function catalog() {
+    var seen = {}, out = [];
+    function add(pn, d, p, fits, q) { if (seen[pn]) { if (fits && seen[pn].fits.indexOf(fits) < 0) seen[pn].fits.push(fits); return; } var it = { pn: pn, d: d, p: p, fits: fits ? [fits] : [], q: q || 1 }; seen[pn] = it; out.push(it); }
+    S.reorder.forEach(function (r) { add(r.pn, r.d, r.p, '', r.q); });
+    CHASSIS_PARTS.forEach(function (x) { add(x[0], x[1], x[2], 'Chassis'); });
+    Object.keys(S.bom).forEach(function (k) { S.bom[k].forEach(function (x) { add(x[0], x[1], x[3], k, x[2]); }); });
+    return out;
+  }
+  function partsForUnit(v) {
+    var list = [], seen = {};
+    (v.components || []).forEach(function (comp) { bomFor(comp).forEach(function (x) { if (!seen[x[0]]) { seen[x[0]] = 1; list.push({ pn: x[0], d: x[1], p: x[3], q: x[2], fits: [comp.make + ' ' + comp.model], group: ROLE_NAME[comp.role] + ' · ' + comp.make + ' ' + comp.model }); } }); });
+    CHASSIS_PARTS.slice(0, 6).forEach(function (x) { if (!seen[x[0]]) { seen[x[0]] = 1; list.push({ pn: x[0], d: x[1], p: x[2], q: 1, fits: ['Chassis'], group: 'Chassis service' }); } });
+    return list;
+  }
+  function flowCart(opts) {
+    opts = opts || {};
+    var q = '', unit = opts.unit || '';
+    function inCart(pn) { var l = S.cart.filter(function (c) { return c.pn === pn; })[0]; return l ? l.q : 0; }
+    function partRow(it, showFits) {
+      var n = inCart(it.pn);
+      return '<div class="row fig li part"><span>' + esc(it.d) + '<small>' + esc(it.pn) + ' · ' + money(it.p) + (showFits && it.fits.length ? ' · fits ' + esc(it.fits.slice(0, 2).join(', ')) + (it.fits.length > 2 ? ' +' + (it.fits.length - 2) : '') : '') + '</small></span>' + (n ? '<span class="qty"><button type="button" data-pn="' + esc(it.pn) + '" data-q="-1" aria-label="Fewer">−</button><b>' + n + '</b><button type="button" data-pn="' + esc(it.pn) + '" data-q="1" aria-label="More">+</button></span>' : '<button type="button" class="btn btn-ghost sm" data-add-pn="' + esc(it.pn) + '">Add' + (it.q > 1 ? ' ' + it.q : '') + '</button>') + '</div>';
+    }
+    function pickHtml() {
+      var head = '<div class="cart-find"><label class="inv-search"><span class="vh">Search parts</span><input type="search" id="c-q" placeholder="Search part number or description" value="' + esc(q) + '" autocomplete="off"></label><select id="c-for" aria-label="Parts that fit a unit"><option value="">Any unit</option>' + S.vehicles.map(function (v) { return '<option value="' + v.unit + '"' + (v.unit === unit ? ' selected' : '') + '>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></div>';
+      var v = unit ? vehicle(unit) : null, body = '';
+      if (q) {
+        var t = q.toLowerCase(), pool = v ? partsForUnit(v) : catalog();
+        var hits = pool.filter(function (it) { return (it.pn + ' ' + it.d + ' ' + it.fits.join(' ')).toLowerCase().indexOf(t) >= 0; }).slice(0, 12);
+        body = '<h4 class="dr-sub">' + (hits.length ? hits.length + ' part' + (hits.length === 1 ? '' : 's') : 'No parts') + ' matching "' + esc(q) + '"' + (v ? ' for Unit #' + v.unit : '') + '</h4><div class="list li-list cart-picks">' + (hits.length ? hits.map(function (it) { return partRow(it, !v); }).join('') : emptyHtml('Nothing by that number or name. Dan can source it: use Ask Dan below with the number or a photo of the part.')) + '</div>';
+      } else if (v) {
+        var list = partsForUnit(v), groups = [];
+        list.forEach(function (it) { var g = groups.filter(function (x) { return x.name === it.group; })[0]; if (!g) { g = { name: it.group, items: [] }; groups.push(g); } g.items.push(it); });
+        body = groups.map(function (g) { return '<h4 class="dr-sub">' + esc(g.name) + '</h4><div class="list li-list cart-picks">' + g.items.map(function (it) { return partRow(it, false); }).join('') + '</div>'; }).join('') || emptyHtml('No as-built record for this unit yet, so no matched parts. Search by part number instead.');
+      } else {
+        body = (S.reorder.length ? '<h4 class="dr-sub">Your reorder list<button type="button" class="lnk" id="c-reorder-all">Add all at usual quantities</button></h4><div class="list li-list cart-picks">' + S.reorder.map(function (r) { return partRow({ pn: r.pn, d: r.d, p: r.p, q: r.q, fits: [] }, false); }).join('') + '</div>' : '') +
+          (S.orderHistory.length ? '<h4 class="dr-sub">Recent orders</h4><div class="list li-list cart-picks">' + S.orderHistory.slice(0, 3).map(function (h) { return '<div class="row fig li part"><span>Order ' + h.no + ' · ' + esc(h.for) + '<small>' + h.date + ' · ' + h.items + ' item' + (h.items === 1 ? '' : 's') + ' · ' + money(h.total) + '</small></span><button type="button" class="btn btn-ghost sm" data-reorder-hist="' + h.no + '">Order again</button></div>'; }).join('') + '</div>' : '') +
+          (!S.reorder.length && !S.orderHistory.length ? '<p class="form-note">Pick a unit above to see every part that fits its chassis, body and equipment, or search by part number.</p>' : '');
+      }
+      return head + body;
+    }
+    function cartHtml() {
+      if (!S.cart.length) return '<h4 class="dr-sub">Your order</h4>' + emptyHtml('Nothing added yet.');
+      return '<h4 class="dr-sub">Your order<span class="muted">' + cartCount() + ' item' + (cartCount() === 1 ? '' : 's') + '</span></h4><div class="list li-list cart">' + S.cart.map(function (c, i) {
         return '<div class="row fig li"><span>' + esc(c.d) + '<small>' + esc(c.pn) + ' · ' + money(c.p) + ' each</small></span><span class="qty"><button type="button" data-q="-1" data-i="' + i + '" aria-label="Fewer">−</button><b>' + c.q + '</b><button type="button" data-q="1" data-i="' + i + '" aria-label="More">+</button></span><b>' + money(c.q * c.p) + '</b></div>';
-      }).join('') + '<div class="row fig total"><span>Order total<small>Before tax</small></span><b>' + money(cartTotal()) + '</b></div></div>' +
-        '<form class="form" id="cart-form"><label>Ship to<select id="c-ship">' + S.shipTo.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></label><label>For unit (optional)<select id="c-unit"><option value="">Shop stock</option>' + S.vehicles.map(function (v) { return '<option value="' + v.unit + '">Unit #' + v.unit + '</option>'; }).join('') + '</select></label></form>';
+      }).join('') + '<div class="row fig total"><span>Order total<small>Before tax · ' + (S.credit.status === 'active' ? 'bills to your account, ' + esc(S.credit.terms) : 'card or prepayment') + '</small></span><b>' + money(cartTotal()) + '</b></div></div>' +
+        '<form class="form" id="cart-form"><div class="form-2"><label>Ship to<select id="c-ship">' + S.shipTo.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></label><label>For unit<select id="c-unit"><option value="">Shop stock</option>' + S.vehicles.map(function (v) { return '<option value="' + v.unit + '"' + (v.unit === unit ? ' selected' : '') + '>Unit #' + v.unit + '</option>'; }).join('') + '</select></label></div><label>PO number or note<input type="text" id="c-po" placeholder="Optional"></label></form>';
     }
+    function body() { return '<div id="c-pick">' + pickHtml() + '</div><div id="c-cart">' + cartHtml() + '</div>'; }
+    function repaint(keepFocus) {
+      var qEl = $('c-q'), pos = qEl ? qEl.selectionStart : 0;
+      $('c-pick').innerHTML = pickHtml(); $('c-cart').innerHTML = cartHtml(); $('dr-foot').innerHTML = foot(); wire(); renderCartBadge();
+      $('dr-title').textContent = S.cart.length ? cartCount() + ' item' + (cartCount() === 1 ? '' : 's') + ' · ' + money(cartTotal()) : 'New parts order';
+      if (keepFocus && $('c-q')) { $('c-q').focus(); try { $('c-q').setSelectionRange(pos, pos); } catch (e) {} }
+    }
+    function bump(pn, d) { var l = S.cart.filter(function (c) { return c.pn === pn; })[0]; if (!l) return; l.q += d; if (l.q <= 0) S.cart = S.cart.filter(function (c) { return c !== l; }); save(); }
     function wire() {
-      qsa('.qty button', drawer).forEach(function (b) {
-        b.addEventListener('click', function () {
-          var i = +b.getAttribute('data-i'); S.cart[i].q += +b.getAttribute('data-q');
-          if (S.cart[i].q <= 0) S.cart.splice(i, 1);
-          save(); $('dr-body').innerHTML = body(); wire(); renderCartBadge(); $('dr-foot').innerHTML = foot(); wireFoot();
-        });
-      });
+      var qEl = $('c-q'); if (qEl) qEl.addEventListener('input', function () { q = qEl.value.trim(); repaint(true); });
+      var fEl = $('c-for'); if (fEl) fEl.addEventListener('change', function () { unit = fEl.value; repaint(); });
+      qsa('[data-add-pn]', drawer).forEach(function (b) { b.addEventListener('click', function () { var pn = b.getAttribute('data-add-pn'); var it = (unit && vehicle(unit) ? partsForUnit(vehicle(unit)) : []).concat(catalog()).filter(function (x) { return x.pn === pn; })[0]; if (!it) return; var line = S.cart.filter(function (c) { return c.pn === pn; })[0]; if (line) line.q += it.q; else S.cart.push({ pn: it.pn, d: it.d, q: it.q, p: it.p }); save(); repaint(); }); });
+      qsa('.cart-picks .qty button', drawer).forEach(function (b) { b.addEventListener('click', function () { bump(b.getAttribute('data-pn'), +b.getAttribute('data-q')); repaint(); }); });
+      qsa('.cart .qty button', drawer).forEach(function (b) { b.addEventListener('click', function () { var i = +b.getAttribute('data-i'); S.cart[i].q += +b.getAttribute('data-q'); if (S.cart[i].q <= 0) S.cart.splice(i, 1); save(); repaint(); }); });
+      var ra = $('c-reorder-all'); if (ra) ra.addEventListener('click', function () { S.reorder.forEach(function (r) { var line = S.cart.filter(function (c) { return c.pn === r.pn; })[0]; if (line) line.q += r.q; else S.cart.push({ pn: r.pn, d: r.d, q: r.q, p: r.p }); }); save(); repaint(); });
+      qsa('[data-reorder-hist]', drawer).forEach(function (b) { b.addEventListener('click', function () { var h = S.orderHistory.filter(function (x) { return x.no === b.getAttribute('data-reorder-hist'); })[0]; var src = S.orders.filter(function (o) { return o.no === h.no; })[0]; var items = src ? src.items.map(function (it) { return { pn: it[0], d: it[1], q: it[2], p: it[3] }; }) : S.reorder.slice(0, Math.max(1, Math.min(h.items, S.reorder.length))).map(function (r) { return { pn: r.pn, d: r.d, q: r.q, p: r.p }; }); items.forEach(function (it) { var line = S.cart.filter(function (c) { return c.pn === it.pn; })[0]; if (line) line.q += it.q; else S.cart.push(it); }); save(); repaint(); toast('Order ' + h.no + ' added to your order.'); }); });
+      var pb = $('c-place'); if (pb) pb.addEventListener('click', place);
     }
-    function foot() { return S.cart.length ? '<button type="button" class="btn btn-primary" id="c-place">Place order · ' + money(cartTotal()) + '</button><a href="team.html" class="lnk">Ask Dan a question</a>' : '<a href="parts.html#parts" class="lnk">Go to the reorder list</a>'; }
-    function wireFoot() {
-      var b = $('c-place'); if (!b) return;
-      b.addEventListener('click', function () {
-        var ship = $('c-ship').value, unit = $('c-unit').value;
-        var no = String(48231 + S.orders.filter(function (o) { return +o.no > 48231; }).length + 1);
-        S.orders.unshift({ no: no, placed: 'Today', unit: unit, for: unit ? 'Requested from the portal' : 'Shop stock', ship: ship, state: 'processing', eta: 'Thu, Oct 29', etaSub: 'Standard delivery', carrier: 'CTOS truck from Fredericksburg',
-          items: S.cart.map(function (c) { return [c.pn, c.d, c.q, c.p]; }), stages: [['Placed', 'Just now'], ['Picked', ''], ['Shipped', ''], ['Delivered', 'Thu Oct 29']], stage: 0 });
-        S.cart.forEach(function (c) { S.reorder.forEach(function (r) { if (r.pn === c.pn) r.last = 'Today'; }); });
-        var total = cartTotal(); S.cart = []; save();
-        addNotification({ title: 'Order ' + no + ' placed', text: money(total) + ' to ' + ship + '. Arrives Thursday.', href: 'parts.html#parts' });
-        closeDrawer(); toast('Order ' + no + ' placed, ' + money(total) + '. Arrives Thursday.'); renderCartBadge(); renderPage();
-      });
+    function foot() { return S.cart.length ? '<button type="button" class="btn btn-primary" id="c-place">Place order · ' + money(cartTotal()) + '</button><a href="team.html" class="lnk">Ask Dan a question</a>' : '<span class="wo-note">Add parts above, then place the order.</span><a href="team.html" class="lnk">Ask Dan a question</a>'; }
+    function place() {
+      var ship = $('c-ship').value, u = $('c-unit').value, po = $('c-po').value;
+      var no = String(48231 + S.orders.filter(function (o) { return +o.no > 48231; }).length + 1);
+      S.orders.unshift({ no: no, placed: 'Today', unit: u, for: po ? 'PO ' + po : (u ? 'Requested from the portal' : 'Shop stock'), ship: ship, state: 'processing', eta: 'Thu, Oct 29', etaSub: 'Standard delivery', carrier: 'CTOS truck from Fredericksburg',
+        items: S.cart.map(function (c) { return [c.pn, c.d, c.q, c.p]; }), stages: [['Placed', 'Just now'], ['Picked', ''], ['Shipped', ''], ['Delivered', 'Thu Oct 29']], stage: 0 });
+      S.cart.forEach(function (c) { S.reorder.forEach(function (r) { if (r.pn === c.pn) r.last = 'Today'; }); });
+      var total = cartTotal(); S.cart = []; save();
+      addNotification({ title: 'Order ' + no + ' placed', text: money(total) + ' to ' + ship + '. Arrives Thursday.', href: 'parts.html#parts' });
+      closeDrawer(); toast('Order ' + no + ' placed, ' + money(total) + '. Arrives Thursday.'); renderCartBadge(); renderPage();
     }
-    openDrawer({ kind: 'New parts order', title: S.cart.length ? cartCount() + ' items' : 'Your order', meta: 'Delivered by CTOS truck, usually in two business days', body: body(), foot: foot(), after: function () { wire(); wireFoot(); } });
+    openDrawer({ kind: 'New parts order', title: S.cart.length ? cartCount() + ' item' + (cartCount() === 1 ? '' : 's') + ' · ' + money(cartTotal()) : 'New parts order', meta: 'Search, pick a unit for parts that fit it, or reorder. Delivered by CTOS truck, usually in two business days.', body: body(), foot: foot(), after: function () { wire(); if ($('c-q') && !unit) $('c-q').focus(); } });
   }
 
   function flowOrder(o, row) {
@@ -1791,7 +1838,7 @@
     if (!requireLogin()) return;
     applyPersona();
     initNav(); initBell(); initSearch(); initStamp();
-    qsa('[data-flow-cart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowCart(); }); });
+    qsa('[data-flow-cart]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowCart({ unit: document.body.getAttribute('data-page') === 'unit' ? ((location.search.match(/[?&]u=(\d+)/) || [])[1] || '') : '' }); }); });
     renderCartBadge();
     renderPage();
   });
