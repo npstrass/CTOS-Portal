@@ -93,6 +93,7 @@
         <a href="#trucks" role="tab" id="tab-trucks" aria-controls="view-trucks" aria-selected="false">Trucks<b>2 on order · 2 quotes</b></a>
         <a href="#rentals" role="tab" id="tab-rentals" aria-controls="view-rentals" aria-selected="false">Rentals<b>3 active</b></a>
         <a href="#freight" role="tab" id="tab-freight" aria-controls="view-freight" aria-selected="false">Freight<b>2 open</b></a>
+        <a href="#inventory" role="tab" id="tab-inventory" aria-controls="view-inventory" aria-selected="false">Find a truck<b>Buy or rent</b></a>
       </nav>
 
       <section class="view" id="view-parts" role="tabpanel" aria-labelledby="tab-parts">
@@ -143,6 +144,11 @@
           <div class="table-foot"><span>Each quote line is one truck configuration. Accepting a quote creates one order per truck. Pricing and terms come from Sarah through Salesforce.</span><button type="button" class="lnk" data-flow-quote>Request a quote</button></div>
         </section>
         <section class="panel">
+          <div class="section-head"><h3>Preferred builds</h3><button type="button" class="lnk" data-flow-build>Save a build</button></div>
+          <div class="list" id="build-rows"></div>
+          <div class="table-foot"><span>Configurations you have bought before. Reorder sends Sarah a quote request with the saved spec as the quote line.</span><a href="#inventory" data-inv-go="sale">Browse what is in stock</a></div>
+        </section>
+        <section class="panel">
           <div class="section-head"><h3>On order</h3><span class="head-note" id="trucks-note"></span></div>
           <div class="table-scroll">
             <table class="fleet orders">
@@ -177,7 +183,23 @@
               <tbody id="rental-rows"></tbody>
             </table>
           </div>
-          <div class="table-foot"><span>Returns to the Fredericksburg lot by 5:00 PM on the due date</span><a href="#">Rent a truck</a></div>
+          <div class="table-foot"><span>Returns to the Fredericksburg lot by 5:00 PM on the due date</span><a href="#inventory" data-inv-go="rent">Rent a truck</a></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-inventory" role="tabpanel" aria-labelledby="tab-inventory" hidden>
+        <section class="panel">
+          <div class="section-head"><h3>CTOS inventory</h3><span class="head-note" id="inv-count"></span></div>
+          <div class="inv-filters">
+            <div class="seg" role="group" aria-label="Buy or rent"><button type="button" class="on" data-inv-mode="sale" aria-pressed="true">For sale</button><button type="button" data-inv-mode="rent" aria-pressed="false">For rent</button></div>
+            <label class="inv-search"><span class="vh">Search inventory</span><input type="search" id="inv-q" placeholder="Search make, model, equipment or stock number"></label>
+            <select id="inv-kind" aria-label="Truck type"><option value="">Any type</option><option value="bucket">Bucket trucks</option><option value="digger">Digger derricks</option><option value="crane">Crane trucks</option><option value="service">Service trucks</option></select>
+            <select id="inv-loc" aria-label="Location"><option value="">Any CTOS location</option></select>
+            <span id="inv-cond-wrap"><select id="inv-cond" aria-label="Condition"><option value="">New and used</option><option value="new">New</option><option value="used">Used, certified</option></select></span>
+            <a href="#inventory" class="lnk" id="inv-clear">Clear</a>
+          </div>
+          <div class="inv-grid" id="inv-results"></div>
+          <div class="table-foot"><span>Stock near you is listed first. Prices before tax, FET and title; rental rates before tax and damage waiver.</span><button type="button" class="lnk" data-flow-quote>Can’t find it? Ask Sarah</button></div>
         </section>
       </section>
     </main>
