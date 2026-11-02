@@ -46,7 +46,8 @@
     s.inShopDays = {}; s.compliance = {}; s.accountTax = {}; s.fleetCounts = { total: 0, moving: 0, idle: 0, fault: 0, shop: 0, byKind: {} };
     s.telemetry = { milesToday: 0, milesWeek: 0, idlePct: 0, mpg30: 0, uptime30: 0, fuelWeek: 0, idleAvgMin: 0, hardBraking: 0, serviced: 0 };
     s.users = [{ name: p.name, email: 'taylor@blueridgeproduce.com', role: 'owner', last: 'Now', status: 'active' }];
-    s.reorder = []; s.autopay = false;
+    s.reorder = []; s.autopay = false; s.builds = [];
+    s.credit = { status: 'none', limit: 0, used: 0, terms: 'Prepay', since: '', reviewed: '', contact: 'Credit team · (816) 555-0190', application: null };
     s.notifications = [{ id: 'w1', level: '', read: false, title: 'Welcome to CTOS One', text: 'Add your first truck, or import your fleet from a spreadsheet, and we take it from there.', when: 'Just now', href: 'fleet-manage.html' }];
     s.team = base.team.slice(0, 1).concat(base.team.slice(2, 3));
     s.salesforce = { connected: true, lastSync: 'Just now', instance: base.salesforce.instance };
@@ -69,6 +70,7 @@
       { done: S.vehicles.length > 0, t: 'Add your first truck', d: S.vehicles.length ? S.vehicles.length + ' unit' + (S.vehicles.length > 1 ? 's' : '') + ' added' : 'One at a time, or import a spreadsheet of VINs.', a: 'Add a vehicle', flow: 'add', a2: 'Import a spreadsheet', flow2: 'import' },
       { done: S.vehicles.some(function (v) { return v.telematics === 'ctos' || v.telematics === 'byo'; }), t: 'Connect telematics', d: 'A CTOS device is free with a service plan; your own device connects through the API.', a: 'Choose on each unit', flow: 'manage' },
       { done: S.users.length > 1, t: 'Invite your team', d: S.users.length > 1 ? (S.users.length - 1) + ' invited' : 'Dispatchers, billing, drivers. Each gets only what they need.', a: 'Invite a user', flow: 'invite' },
+      { done: S.credit.status !== 'none', t: 'Set up credit terms', d: S.credit.status === 'pending' ? 'Application ' + S.credit.application.ref + ' is under review' : 'Open an account to order parts, rent and book service on Net 30 with one monthly statement.', a: 'Apply for credit', flow: 'credit' },
       { done: S.appointments.length > 0, t: 'Book your first service', d: S.appointments.length ? 'Booked' : 'Or just tell us the PM interval you run and we will remind you.', a: 'Schedule service', flow: 'schedule' }
     ];
     var n = steps.filter(function (s) { return s.done; }).length;
@@ -81,7 +83,7 @@
     qsa('[data-ob]', root).forEach(function (b) {
       b.addEventListener('click', function () {
         var f = b.getAttribute('data-ob');
-        if (f === 'add') flowVehicleForm(null); else if (f === 'import') flowImport(); else if (f === 'invite') flowInvite(); else if (f === 'schedule') flowSchedule({}); else location.href = 'fleet-manage.html';
+        if (f === 'add') flowVehicleForm(null); else if (f === 'import') flowImport(); else if (f === 'invite') flowInvite(); else if (f === 'schedule') flowSchedule({}); else if (f === 'credit') flowCreditApp(); else location.href = 'fleet-manage.html';
       });
     });
   }
@@ -261,18 +263,18 @@
       }
     });
   }
-  function flowRequestQuote() {
+  function flowRequestQuote(stock) {
     var n = 1;
-    function lineHtml(i) { return '<fieldset class="qline" data-line="' + i + '"><legend>Line ' + i + '</legend><div class="form-2"><label>New or used<select class="rq-cond"><option>New</option><option>Used</option><option>Either</option></select></label><label>Quantity<input type="text" class="rq-qty" inputmode="numeric" value="1"></label></div><label>Truck<input type="text" class="rq-subject" required placeholder="2026 Freightliner M2 106 · Altec AA55"></label><label>Spec and must-haves<textarea class="rq-detail" rows="2" placeholder="Chassis, body, aerial or crane, insulation category, color"></textarea></label></fieldset>'; }
+    function lineHtml(i, it) { var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : ''; return '<fieldset class="qline" data-line="' + i + '"' + (it ? ' data-stock="' + it.stock + '"' : '') + '><legend>Line ' + i + (it ? ' · stock ' + it.stock + ', ' + esc(it.loc) : '') + '</legend><div class="form-2"><label>New or used<select class="rq-cond">' + ['New', 'Used', 'Either'].map(function (o) { return '<option' + (o === cond ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label><label>Quantity<input type="text" class="rq-qty" inputmode="numeric" value="1"></label></div><label>Truck<input type="text" class="rq-subject" required placeholder="2026 Freightliner M2 106 · Altec AA55" value="' + (it ? esc(invTitle(it)) : '') + '"></label><label>Spec and must-haves<textarea class="rq-detail" rows="2" placeholder="Chassis, body, aerial or crane, insulation category, color">' + (it ? esc(it.chassis + ' · ' + it.spec) : '') + '</textarea></label></fieldset>'; }
     openDrawer({
       kind: 'Request a quote', title: 'Tell Sarah what you need', meta: 'Creates a Salesforce quote with one line per truck configuration',
-      body: '<form class="form" id="rq-form"><div id="rq-lines">' + lineHtml(1) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
+      body: '<form class="form" id="rq-form"><div id="rq-lines">' + lineHtml(1, stock) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
       foot: '<button type="submit" form="rq-form" class="btn btn-primary">Send request</button><a href="team.html" class="lnk">Call Sarah instead</a>',
       after: function () {
         $('rq-add').addEventListener('click', function () { n += 1; var w = document.createElement('div'); w.innerHTML = lineHtml(n); $('rq-lines').appendChild(w.children ? w.children[0] : w); });
         $('rq-form').addEventListener('submit', function (e) {
           e.preventDefault();
-          var lines = qsa('.qline').map(function (f, i) { return { ql: 'QL-0' + (i + 1), spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
+          var lines = qsa('.qline').map(function (f, i) { return { ql: 'QL-0' + (i + 1), spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, '') + (f.getAttribute('data-stock') ? ' · stock ' + f.getAttribute('data-stock') : ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
           if (!lines.length) return;
           var no = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
           S.quotes.unshift({ no: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', lines: lines, note: ($('rq-by').value ? 'Needed by ' + $('rq-by').value + '. ' : '') + ($('rq-trade').value ? 'Trade-in: ' + $('rq-trade').value + '.' : '') });
@@ -357,7 +359,7 @@
     var v = vehicle(unit);
     var head = $('unit-head');
     if (!v) { head.innerHTML = '<h1>Unit not found</h1><p class="finding">That unit is not in your fleet. <a href="fleet-manage.html">See all units</a>.</p>'; return; }
-    document.title = 'Unit #' + v.unit + ' -- CTOS One';
+    document.title = 'Unit #' + v.unit + ' — CTOS One';
     var insp = unitInspections(v.unit), due = insp.map(function (i) { return docDays(i.due); }).filter(function (d) { return d <= 45; }).length;
     var camps = unitCampaigns(v.unit).filter(function (x) { return x.u.status === 'open'; }).length;
     var wos = S.workorders.filter(function (w) { return w.unit === v.unit && w.state !== 'done'; });
@@ -505,9 +507,15 @@
   var KEY = 'ctos-one-demo-v1';
   var S;
   function load() {
-    try { var raw = localStorage.getItem(KEY); if (raw) { S = JSON.parse(raw); if (S.personas) return; } } catch (e) {}
     var who = ''; try { who = localStorage.getItem('ctos-persona') || ''; } catch (e) {}
+    try { var raw = localStorage.getItem(KEY); if (raw) { S = JSON.parse(raw); if (S.personas) { migrate(who); return; } } } catch (e) {}
     S = who === 'taylor' ? newCustomerSeed(window.CTOS_SEED) : JSON.parse(JSON.stringify(window.CTOS_SEED));
+  }
+  // Saved state from an earlier version of the demo gets any keys added since.
+  function migrate(who) {
+    var fresh = who === 'taylor' ? newCustomerSeed(window.CTOS_SEED) : window.CTOS_SEED, changed = false;
+    ['inventory', 'builds', 'credit'].forEach(function (k) { if (S[k] === undefined) { S[k] = JSON.parse(JSON.stringify(fresh[k])); changed = true; } });
+    if (changed) save();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   function reset() { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); }
@@ -677,6 +685,8 @@
       S.rentals.forEach(function (r) { items.push({ t: r.unit + ' · ' + r.spec, s: 'Due back ' + r.due, h: 'parts.html#rentals', k: 'Rental' }); });
       S.invoices.forEach(function (i) { items.push({ t: i.no, s: 'Unit #' + i.unit + ' · ' + i.desc + ' · ' + money(i.amount), h: 'billing.html', k: 'Invoice' }); });
       S.workorders.forEach(function (w) { items.push({ t: 'Work order · Unit #' + w.unit, s: w.where, h: 'service.html', k: 'Service' }); });
+      (S.inventory || []).forEach(function (it) { items.push({ t: invTitle(it) + ' · ' + it.stock, s: (it.sale ? 'For sale' : 'For rent') + ' · ' + it.loc, h: 'parts.html#inventory', k: 'Inventory' }); });
+      (S.builds || []).forEach(function (b) { items.push({ t: b.name, s: b.spec, h: 'parts.html#trucks', k: 'Preferred build' }); });
       S.team.forEach(function (p) { items.push({ t: p.name, s: p.role, h: 'team.html', k: 'Team' }); });
       S.reports.forEach(function (r) { items.push({ t: r.name, s: r.period, h: 'reports.html#' + r.id, k: 'Report' }); });
       S.quotes.forEach(function (q) { items.push({ t: q.no + ' · ' + q.lines.map(function (l) { return l.spec; }).join(', '), s: QSTAGE[q.stage][0], h: 'parts.html#trucks', k: 'Quote' }); });
@@ -926,7 +936,8 @@
     openDrawer({
       kind: t.stages[t.stage][0], title: t.spec, meta: t.detail,
       body: '<dl class="dr-facts"><dt>Order</dt><dd>' + t.no + ', placed ' + t.ordered + '</dd>' + (t.quote ? '<dt>Salesforce</dt><dd>' + t.quote + ' · ' + t.ql + '</dd>' : '') + '<dt>Expected</dt><dd>' + esc(t.eta) + '</dd><dt>Built at</dt><dd>' + esc(t.where) + '</dd><dt>Price</dt><dd>' + money(t.price) + '</dd></dl><ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>',
-      foot: '<a href="#" class="btn btn-ghost">Build sheet</a><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row
+      foot: '<a href="#" class="btn btn-ghost">Build sheet</a><button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
+      after: function () { $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · order ' + t.no, lastPrice: t.price }); }); }
     });
   }
 
@@ -1255,25 +1266,26 @@
     $('reorder-rows').innerHTML = S.reorder.map(function (r, i) { return '<div class="row reord"><div><div class="unit">' + esc(r.d) + '<span class="sub"> · ' + r.pn + '</span></div><div class="job">Last ordered ' + esc(r.last) + ' · usually ' + r.q + ' at ' + money(r.p) + ' each</div></div><div class="when"><strong>' + money(r.q * r.p) + '</strong><span>for ' + r.q + '</span></div><span class="act"><button type="button" class="lnk" data-add="' + i + '">Add</button></span></div>'; }).join('');
     qsa('[data-add]').forEach(function (b) { b.addEventListener('click', function () { addToCart(S.reorder[+b.getAttribute('data-add')]); }); });
     once($('reorder-all'), 'click', function (e) { e.preventDefault(); S.reorder.forEach(addToCart); flowCart(); });
-    $('trucks-note').textContent = 'Next delivery ' + S.trucks[0].eta + ' · ' + money(sum(S.trucks.map(function (t) { return t.price; }))) + ' committed';
-    $('truck-rows').innerHTML = S.trucks.map(function (t) { return '<tr><td class="id"><button type="button" class="row-btn" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button></td><td class="for"><span class="trunc"><span class="ink">' + esc(t.spec) + '</span> · ' + esc(t.detail) + (t.quote ? ' · ' + t.quote + ' ' + t.ql : '') + '</span></td><td>' + t.ordered + '</td><td>' + statusHtml(t.stage >= 2 ? 'shipped' : 'processing', t.stages[t.stage][0]) + '</td><td class="num">' + money(t.price) + '</td><td class="num eta"><strong>' + esc(t.eta) + '</strong><span>' + esc(t.where) + '</span></td></tr>'; }).join('');
+    $('trucks-note').textContent = S.trucks.length ? 'Next delivery ' + S.trucks[0].eta + ' · ' + money(sum(S.trucks.map(function (t) { return t.price; }))) + ' committed' : 'Nothing on order';
+    $('truck-rows').innerHTML = !S.trucks.length ? '<tr><td colspan="6">' + emptyHtml('No trucks on order. Accepted quotes show up here.') + '</td></tr>' : S.trucks.map(function (t) { return '<tr><td class="id"><button type="button" class="row-btn" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button></td><td class="for"><span class="trunc"><span class="ink">' + esc(t.spec) + '</span> · ' + esc(t.detail) + (t.quote ? ' · ' + t.quote + ' ' + t.ql : '') + '</span></td><td>' + t.ordered + '</td><td>' + statusHtml(t.stage >= 2 ? 'shipped' : 'processing', t.stages[t.stage][0]) + '</td><td class="num">' + money(t.price) + '</td><td class="num eta"><strong>' + esc(t.eta) + '</strong><span>' + esc(t.where) + '</span></td></tr>'; }).join('');
     qsa('[data-truck]').forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('tr')); }); });
     var active = S.rentals.filter(function (r) { return r.state !== 'returned'; });
     var rt = sum(active.map(function (r) { return r.days * r.rate; }));
     var dueWk = active.filter(function (r) { return r.state === 'due'; }).length;
     $('rentals-note').innerHTML = money(rt) + ' accrued before tax' + (dueWk ? ' · <span class="priority high">' + dueWk + ' due back this week</span>' : '');
     $('rental-rows').innerHTML = active.length ? active.map(function (r, i) {
-      var sub = r.state === 'due' ? 'Due in 2 days' : (r.state === 'returning' ? 'Return scheduled, ' + esc(r.returnTo || '') : (r.extended ? 'Extension requested' : r.days + ' days so far'));
-      var act = r.state === 'returning' ? '<span class="muted">Return booked</span>' : (r.state === 'due' ? '<button type="button" class="lnk" data-rent="' + i + '" data-act="return">Schedule return</button>' : '<button type="button" class="lnk" data-rent="' + i + '" data-act="extend">Extend</button>');
+      var sub = r.state === 'reserved' ? 'Reserved · ' + esc(r.where || '') : r.state === 'due' ? 'Due in 2 days' : (r.state === 'returning' ? 'Return scheduled, ' + esc(r.returnTo || '') : (r.extended ? 'Extension requested' : r.days + ' days so far'));
+      var act = r.state === 'reserved' ? '<span class="muted">Starts ' + esc(r.started) + '</span>' : r.state === 'returning' ? '<span class="muted">Return booked</span>' : (r.state === 'due' ? '<button type="button" class="lnk" data-rent="' + i + '" data-act="return">Schedule return</button>' : '<button type="button" class="lnk" data-rent="' + i + '" data-act="extend">Extend</button>');
       return '<tr class="' + r.state + '"><td class="id"><span class="ink">' + r.unit + '</span></td><td class="for"><span class="trunc">' + esc(r.spec) + '</span></td><td>' + r.started + '</td><td class="num eta"><strong>' + esc(r.due) + '</strong><span>' + sub + '</span></td><td class="num">' + money(r.rate) + '</td><td class="num">' + money(r.days * r.rate) + '</td><td class="act-col">' + act + '</td></tr>';
     }).join('') : '<tr><td colspan="7">' + emptyHtml('No active rentals.') + '</td></tr>';
     qsa('[data-rent]').forEach(function (b) { b.addEventListener('click', function () { flowRental(active[+b.getAttribute('data-rent')], b.getAttribute('data-act'), b.closest('tr')); }); });
-    renderQuotes(); renderFreight();
+    renderQuotes(); renderFreight(); renderBuilds(); renderInventory(); initInventory();
     renderCartBadge();
     if (!el_tabsInit) { el_tabsInit = true; initTabs(); }
   };
 
   renderers.billing = function () {
+    renderCredit();
     var open = S.invoices.filter(function (i) { return i.status === 'open'; });
     var paid = S.invoices.filter(function (i) { return i.status === 'paid'; });
     var ot = sum(open.map(function (i) { return i.amount; }));
@@ -1341,13 +1353,13 @@
       return '<a href="#' + p.id + '" class="post-card' + (big ? ' big' : '') + '"><div class="pc-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"></div><div class="pc-body"><span class="post-tag">' + esc(p.tag) + ' · ' + p.date + '</span><h2>' + esc(p.title) + '</h2>' + (big ? '<p>' + esc(p.summary) + '</p>' : '') + '<span class="pc-meta">' + esc(p.author.split(',')[0]) + ' · ' + p.read + '</span></div></a>';
     }
     function index() {
-      document.title = 'News -- CTOS One';
+      document.title = 'News — CTOS One';
       $('news-head').innerHTML = '<div><h1>News</h1><p class="finding">Notes from the people who service your fleet: what we are seeing in the shops, what to check before the season turns, and what the telematics numbers mean.</p></div>';
       $('news-body').innerHTML = '<div class="post-index">' + card(S.posts[0], true) + '<div class="post-grid">' + S.posts.slice(1).map(function (p) { return card(p, false); }).join('') + '</div></div>';
     }
     function article(id) {
       var p = S.posts.filter(function (x) { return x.id === id; })[0]; if (!p) { index(); return; }
-      document.title = p.title + ' -- CTOS One';
+      document.title = p.title + ' — CTOS One';
       $('news-head').innerHTML = '<div><a href="#" class="lnk back">All news</a></div>';
       var body = p.body.map(function (t, i) { return '<p>' + esc(t) + '</p>' + (i === 1 && p.pull ? '<blockquote class="pull">' + esc(p.pull) + '</blockquote>' : ''); }).join('');
       $('news-body').innerHTML = '<article class="post"><header class="post-head"><span class="post-tag">' + esc(p.tag) + '</span><h1>' + esc(p.title) + '</h1><p class="post-lead">' + esc(p.summary) + '</p><p class="post-meta">' + esc(p.author) + ' · ' + p.date + ' · ' + p.read + ' read</p></header>' +
@@ -1381,6 +1393,242 @@
     $('sup-rows').innerHTML = S.tickets.length ? S.tickets.map(function (t) { return '<div class="row tk"><div><div class="unit">' + esc(t.subject) + '<span class="sub"> · ' + t.id + '</span></div><div class="job">' + esc(t.last) + '</div></div><div class="when">' + statusHtml(t.state === 'open' ? 'shipped' : 'off', t.state === 'open' ? 'Open' : 'Closed') + '<span>Opened ' + t.opened + '</span></div></div>'; }).join('') : emptyHtml('No requests yet.');
     qsa('[data-flow-ticket]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowTicket(); }); });
   };
+
+
+  /* ---------- inventory: sales and rental stock ---------- */
+  var invFilter = { mode: 'sale', kind: '', loc: '', cond: '', q: '' };
+  function invTitle(it) { return it.year + ' ' + it.make + ' ' + it.model + ' · ' + it.equip; }
+  function invMatches(it) {
+    if (invFilter.mode === 'sale' && !it.sale) return false;
+    if (invFilter.mode === 'rent' && !it.rent) return false;
+    if (invFilter.kind && it.kind !== invFilter.kind) return false;
+    if (invFilter.loc && it.loc.indexOf(invFilter.loc) < 0) return false;
+    if (invFilter.cond && invFilter.mode === 'sale' && it.cond !== invFilter.cond) return false;
+    if (invFilter.q) { var hay = (it.stock + ' ' + invTitle(it) + ' ' + it.spec + ' ' + it.chassis + ' ' + it.loc + ' ' + it.kindName).toLowerCase(); if (hay.indexOf(invFilter.q.toLowerCase()) < 0) return false; }
+    return true;
+  }
+  function invCard(it) {
+    var sale = invFilter.mode === 'sale';
+    var meter = it.cond === 'new' ? 'New' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : 'Rental fleet · ' + num(it.hours) + ' h');
+    var priceHtml = sale ? '<b>' + money(it.price) + '</b><span>' + (it.cond === 'new' ? 'Before tax, FET and title' : 'Certified, 90-day warranty') + '</span>' : '<b>' + money(it.rates.day) + '<small> / day</small></b><span>' + money(it.rates.week) + ' / wk · ' + money(it.rates.month) + ' / mo</span>';
+    var ready = /now|In stock/.test(it.avail);
+    var acts = sale ? '<button type="button" class="btn btn-ghost" data-inv-quote="' + it.stock + '">Request a quote</button><button type="button" class="lnk" data-inv-save="' + it.stock + '">Save as preferred build</button>' : '<button type="button" class="btn btn-ghost" data-inv-reserve="' + it.stock + '">Reserve</button><button type="button" class="lnk" data-inv-detail="' + it.stock + '">Details</button>';
+    return '<article class="inv-card" data-stock="' + it.stock + '"><div class="inv-top"><span class="inv-kind">' + esc(it.kindName) + '</span><span class="inv-stock mono">' + it.stock + '</span></div>' +
+      '<h4><button type="button" class="row-btn" data-inv-detail="' + it.stock + '">' + esc(invTitle(it)) + '</button></h4>' +
+      '<p class="inv-spec">' + esc(it.spec) + '</p><p class="inv-chassis">' + esc(it.chassis) + ' · ' + esc(meter) + '</p>' +
+      '<div class="inv-foot"><div class="inv-where"><strong>' + esc(it.loc) + '</strong><span class="' + (ready ? 'ok-t' : '') + '">' + esc(it.avail) + '</span></div><div class="inv-price">' + priceHtml + '</div></div>' +
+      '<div class="inv-acts">' + acts + '</div></article>';
+  }
+  function renderInventory() {
+    var root = $('inv-results'); if (!root) return;
+    var items = S.inventory.filter(invMatches);
+    var locs = []; S.inventory.forEach(function (it) { var l = it.loc; if (locs.indexOf(l) < 0) locs.push(l); });
+    var ls = $('inv-loc'); if (ls && ls.options.length <= 1) ls.innerHTML = '<option value="">Any CTOS location</option>' + locs.sort().map(function (l) { return '<option>' + esc(l) + '</option>'; }).join('');
+    qsa('[data-inv-mode]').forEach(function (b) { var on = b.getAttribute('data-inv-mode') === invFilter.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    var cw = $('inv-cond-wrap'); if (cw) cw.hidden = invFilter.mode !== 'sale';
+    $('inv-count').textContent = items.length ? items.length + ' truck' + (items.length === 1 ? '' : 's') + (invFilter.mode === 'sale' ? ' for sale' : ' available to rent') : 'No matches';
+    root.innerHTML = items.length ? items.map(invCard).join('') : emptyHtml('Nothing matches those filters. Clear one, or ask Sarah; CTOS has more than 10,000 units nationally and she can locate one.');
+    qsa('[data-inv-quote]').forEach(function (b) { b.addEventListener('click', function () { flowRequestQuote(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-quote'); })[0]); }); });
+    qsa('[data-inv-save]').forEach(function (b) { b.addEventListener('click', function () { var it = S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-save'); })[0]; flowSaveBuild({ spec: it.year + ' ' + it.make + ' ' + it.model + ' · ' + it.equip, detail: it.chassis + ' · ' + it.spec + ' · ' + it.color.toLowerCase(), lastPrice: it.price }); }); });
+    qsa('[data-inv-reserve]').forEach(function (b) { b.addEventListener('click', function () { flowReserve(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-reserve'); })[0], b.closest('.inv-card')); }); });
+    qsa('[data-inv-detail]').forEach(function (b) { b.addEventListener('click', function () { flowInventoryDetail(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-detail'); })[0], b.closest('.inv-card')); }); });
+  }
+  function initInventory() {
+    if (!$('inv-results')) return;
+    qsa('[data-inv-mode]').forEach(function (b) { once(b, 'click', function () { invFilter.mode = b.getAttribute('data-inv-mode'); renderInventory(); }); });
+    [['inv-kind', 'kind'], ['inv-loc', 'loc'], ['inv-cond', 'cond']].forEach(function (p) { once($(p[0]), 'change', function () { invFilter[p[1]] = $(p[0]).value; renderInventory(); }); });
+    once($('inv-q'), 'input', function () { invFilter.q = $('inv-q').value.trim(); renderInventory(); });
+    once($('inv-clear'), 'click', function (e) { e.preventDefault(); invFilter = { mode: invFilter.mode, kind: '', loc: '', cond: '', q: '' }; ['inv-kind', 'inv-loc', 'inv-cond', 'inv-q'].forEach(function (id) { if ($(id)) $(id).value = ''; }); renderInventory(); });
+    qsa('[data-inv-go]').forEach(function (a) { once(a, 'click', function () { invFilter.mode = a.getAttribute('data-inv-go'); renderInventory(); }); });
+  }
+  function flowInventoryDetail(it, row) {
+    var sale = it.sale && invFilter.mode === 'sale';
+    openDrawer({
+      kind: esc(it.kindName) + ' · ' + it.stock, title: invTitle(it), meta: it.loc + ' · ' + it.avail,
+      body: '<dl class="dr-facts"><dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
+        '<h4 class="dr-h">Specification</h4><div class="list li-list"><div class="row fig li"><span>Chassis<small>' + esc(it.chassis) + '</small></span></div><div class="row fig li"><span>Equipment<small>' + esc(it.equip) + ' · ' + esc(it.spec) + '</small></span></div></div>' +
+        (it.sale ? '<div class="row fig total"><span>Purchase price<small>Before tax, FET and title</small></span><b>' + money(it.price) + '</b></div>' : '') +
+        (it.rent ? '<div class="row fig total"><span>Rental rates<small>Before tax and damage waiver · delivery quoted separately</small></span><b>' + money(it.rates.day) + ' / day<small style="display:block;font-weight:400">' + money(it.rates.week) + ' / wk · ' + money(it.rates.month) + ' / mo</small></b></div>' : ''),
+      foot: (it.sale ? '<button type="button" class="btn btn-primary" id="inv-d-quote">Request a quote</button>' : '') + (it.rent ? '<button type="button" class="btn ' + (it.sale ? 'btn-ghost' : 'btn-primary') + '" id="inv-d-reserve">Reserve</button>' : '') + (it.sale ? '<button type="button" class="lnk" id="inv-d-save">Save as preferred build</button>' : ''),
+      row: row,
+      after: function () {
+        var q = $('inv-d-quote'); if (q) q.addEventListener('click', function () { flowRequestQuote(it); });
+        var r = $('inv-d-reserve'); if (r) r.addEventListener('click', function () { flowReserve(it, row); });
+        var s = $('inv-d-save'); if (s) s.addEventListener('click', function () { flowSaveBuild({ spec: invTitle(it), detail: it.chassis + ' · ' + it.spec + ' · ' + it.color.toLowerCase(), lastPrice: it.price }); });
+      }
+    });
+  }
+  function flowReserve(it, row) {
+    var d = new Date(); d.setDate(d.getDate() + 2); var iso = d.toISOString().slice(0, 10);
+    var sites = S.sites.filter(function (s) { return s.type !== 'CTOS location'; });
+    openDrawer({
+      kind: 'Reserve a rental', title: invTitle(it), meta: it.stock + ' · ' + it.loc + ' · ' + it.avail,
+      body: '<form class="form" id="rsv-form"><div class="form-2"><label>Start<input type="date" id="rsv-start" value="' + iso + '" required></label><label>Term<select id="rsv-term"><option value="7">1 week</option><option value="14">2 weeks</option><option value="30" selected>1 month</option><option value="90">3 months</option></select></label></div>' +
+        '<fieldset><legend>Delivery</legend><label class="radio"><input type="radio" name="rsv-how" value="deliver" checked><span>Deliver to a site<small>CTOS Logistics quotes the move; usually next business day</small></span></label><label class="radio"><input type="radio" name="rsv-how" value="pickup"><span>Pick up at ' + esc(it.loc) + '<small>Ready at 7:00 AM on the start date</small></span></label></fieldset>' +
+        '<label id="rsv-site-wrap">Deliver to<select id="rsv-site">' + sites.map(function (s) { return '<option>' + esc(s.name) + '</option>'; }).join('') + '<option>Other address</option></select></label>' +
+        '<label>Operator or driver<input type="text" id="rsv-driver" placeholder="Who will be running it"></label>' +
+        '<p class="form-note">Rate ' + money(it.rates.day) + ' per day, ' + money(it.rates.month) + ' per month, before tax and damage waiver. Billing follows your account terms (' + esc(S.credit.terms) + ').</p></form>',
+      foot: '<button type="submit" form="rsv-form" class="btn btn-primary">Reserve ' + it.stock + '</button><a href="team.html" class="lnk">Call Jordan instead</a>',
+      row: row,
+      after: function () {
+        qsa('input[name="rsv-how"]').forEach(function (r) { r.addEventListener('change', function () { $('rsv-site-wrap').hidden = r.value === 'pickup' && r.checked; }); });
+        $('rsv-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var days = +$('rsv-term').value, st = new Date($('rsv-start').value + 'T12:00:00'), en = new Date(st); en.setDate(en.getDate() + days);
+          var fmt = function (x) { return x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+          var pick = (document.querySelector('input[name="rsv-how"][value="pickup"]') || {}).checked;
+          var where = pick ? 'Pick up at ' + it.loc : 'Deliver to ' + $('rsv-site').value;
+          S.rentals.push({ unit: it.stock, spec: invTitle(it).replace(' · ', ' · ') + ' ' + it.kindName.toLowerCase(), started: fmt(st), due: fmt(en), days: 0, rate: it.rates.day, state: 'reserved', status: 'Reserved', loc: it.loc, driver: $('rsv-driver').value, kind: it.kindName, nextService: '', where: where });
+          it.avail = 'Reserved for ' + S.user.org;
+          save();
+          addNotification({ title: it.stock + ' reserved', text: invTitle(it) + ', ' + fmt(st) + ' to ' + fmt(en) + '. ' + where + '. Jordan confirms within the hour.', href: 'parts.html#rentals' });
+          closeDrawer(); toast(it.stock + ' reserved from ' + fmt(st) + '.'); renderPage();
+          location.hash = '#rentals';
+        });
+      }
+    });
+  }
+
+  /* ---------- preferred builds ---------- */
+  function renderBuilds() {
+    var root = $('build-rows'); if (!root) return;
+    root.innerHTML = S.builds.length ? S.builds.map(function (b) {
+      var inFleet = b.units.filter(function (u) { return vehicle(u); }).length;
+      return '<div class="row build"><div><div class="unit">' + esc(b.name) + '</div><div class="job">' + esc(b.spec) + '</div><div class="job build-detail">' + esc(b.detail) + '</div></div><div class="when"><strong>' + (inFleet ? inFleet + ' in your fleet' : 'Saved') + '</strong><span>Last ' + esc(b.last) + '</span></div><span class="act"><button type="button" class="btn btn-ghost" data-build-reorder="' + b.id + '">Reorder</button><button type="button" class="lnk" data-build-edit="' + b.id + '">Edit</button></span></div>';
+    }).join('') : emptyHtml('No preferred builds yet. Save one from a truck order, from inventory, or from any unit in your fleet.');
+    qsa('[data-build-reorder]').forEach(function (b) { b.addEventListener('click', function () { flowReorderBuild(S.builds.filter(function (x) { return x.id === b.getAttribute('data-build-reorder'); })[0], b.closest('.row')); }); });
+    qsa('[data-build-edit]').forEach(function (b) { b.addEventListener('click', function () { flowSaveBuild(S.builds.filter(function (x) { return x.id === b.getAttribute('data-build-edit'); })[0], b.closest('.row')); }); });
+    qsa('[data-flow-build]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowSaveBuild(null); }); });
+  }
+  function flowSaveBuild(seed, row) {
+    var editing = !!(seed && seed.id);
+    seed = seed || {};
+    openDrawer({
+      kind: editing ? 'Edit preferred build' : 'Save a preferred build', title: editing ? seed.name : 'Name this configuration', meta: 'Reorder it any time in one step; Sarah quotes it from the saved spec',
+      body: '<form class="form" id="pb-form"><label>Name<input type="text" id="pb-name" required value="' + esc(seed.name || '') + '" placeholder="Standard 55 ft bucket"></label><label>Truck<input type="text" id="pb-spec" required value="' + esc(seed.spec || '') + '" placeholder="2026 Freightliner M2 106 · Altec AA55"></label><label>Spec and must-haves<textarea id="pb-detail" rows="4" placeholder="Chassis, body, aerial or crane, insulation category, color, options">' + esc(seed.detail || '') + '</textarea></label><label>Units in your fleet built this way<input type="text" id="pb-units" value="' + esc((seed.units || []).join(', ')) + '" placeholder="1042, 1130"></label></form>',
+      foot: '<button type="submit" form="pb-form" class="btn btn-primary">' + (editing ? 'Save changes' : 'Save build') + '</button>' + (editing ? '<button type="button" class="lnk" id="pb-del">Remove</button>' : ''),
+      row: row,
+      after: function () {
+        $('pb-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var units = $('pb-units').value.split(/[,\s]+/).filter(Boolean);
+          if (editing) { seed.name = $('pb-name').value; seed.spec = $('pb-spec').value; seed.detail = $('pb-detail').value; seed.units = units; }
+          else S.builds.unshift({ id: 'b' + Date.now(), name: $('pb-name').value, spec: $('pb-spec').value, detail: $('pb-detail').value, units: units, last: seed.last || 'Not ordered yet', lastPrice: seed.lastPrice || 0, lead: seed.lead || 'Quoted' });
+          save(); closeDrawer(); toast(editing ? 'Build updated.' : '"' + $('pb-name').value + '" saved to preferred builds.'); renderPage();
+          if (!editing && document.body.getAttribute('data-page') === 'parts') location.hash = '#trucks';
+        });
+        var del = $('pb-del'); if (del) del.addEventListener('click', function () { confirmInline($('dr-foot'), 'Remove "' + seed.name + '" from preferred builds?', 'Remove', function () { S.builds = S.builds.filter(function (b) { return b !== seed; }); save(); closeDrawer(); toast('Build removed.'); renderPage(); }); });
+      }
+    });
+  }
+  function flowReorderBuild(b, row) {
+    openDrawer({
+      kind: 'Reorder · ' + b.name, title: b.spec, meta: 'Last ' + b.last + (b.lastPrice ? ' at ' + money(b.lastPrice) : '') + ' · typical lead ' + b.lead,
+      body: '<p class="dr-summary">' + esc(b.detail) + '</p><form class="form" id="ro-form"><div class="form-2"><label>Quantity<input type="text" id="ro-qty" inputmode="numeric" value="1"></label><label>Needed by<input type="date" id="ro-by"></label></div>' +
+        '<fieldset><legend>Build</legend><label class="radio"><input type="radio" name="ro-same" value="same" checked><span>Exactly as last time<small>Same spec, current model year, same color</small></span></label><label class="radio"><input type="radio" name="ro-same" value="changes"><span>With changes<small>Tell Sarah what is different</small></span></label></fieldset>' +
+        '<label id="ro-ch-wrap" hidden>What changes<textarea id="ro-changes" rows="2" placeholder="Different color, add a jib, swap the body"></textarea></label>' +
+        '<label>Trade-in<select id="ro-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label>' +
+        '<p class="form-note">Sends Sarah a Salesforce quote request with this build as the quote line. Current pricing comes back on the quote; the last price was ' + (b.lastPrice ? money(b.lastPrice) : 'not recorded') + '.</p></form>',
+      foot: '<button type="submit" form="ro-form" class="btn btn-primary">Request quote for this build</button><a href="team.html" class="lnk">Call Sarah instead</a>',
+      row: row,
+      after: function () {
+        qsa('input[name="ro-same"]').forEach(function (r) { r.addEventListener('change', function () { $('ro-ch-wrap').hidden = !(r.value === 'changes' && r.checked); }); });
+        $('ro-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var qty = +$('ro-qty').value || 1, ch = (document.querySelector('input[name="ro-same"][value="changes"]') || {}).checked ? $('ro-changes').value : '';
+          var no = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
+          S.quotes.unshift({ no: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', build: b.id, lines: [{ ql: 'QL-01', spec: b.spec, detail: 'Preferred build "' + b.name + '" · ' + b.detail + (ch ? ' · Changes: ' + ch : ''), qty: qty, unitPrice: 0, eta: '' }], note: 'Reorder of preferred build "' + b.name + '".' + ($('ro-by').value ? ' Needed by ' + $('ro-by').value + '.' : '') + ($('ro-trade').value ? ' Trade-in: ' + $('ro-trade').value + '.' : '') });
+          b.last = 'Today · ' + no;
+          S.salesforce.lastSync = 'Just now'; save();
+          addNotification({ title: no + ' sent to Sarah', text: qty + ' × ' + b.name + ', built as before' + (ch ? ' with changes' : '') + '. She usually replies within a business day.', href: 'parts.html#trucks' });
+          closeDrawer(); toast('Request ' + no + ' sent for ' + qty + ' × ' + b.name + '.'); renderPage();
+        });
+      }
+    });
+  }
+
+  /* ---------- credit ---------- */
+  function renderCredit() {
+    var root = $('credit-panel'); if (!root) return;
+    var c = S.credit, app = c.application;
+    var html = '';
+    if (c.status === 'active') {
+      var pct = Math.min(100, Math.round(c.used / c.limit * 100));
+      html = '<div class="credit-head"><div><b>' + money(c.limit - c.used) + '</b><span>available of ' + money(c.limit) + '</span></div><span class="status shipped">Open account · ' + esc(c.terms) + '</span></div>' +
+        '<div class="credit-bar" role="img" aria-label="' + pct + ' percent of the credit line in use"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="list"><div class="row fig"><span>In use<small>Open invoices and rentals accrued</small></span><b>' + money(c.used) + '</b></div><div class="row fig"><span>Terms<small>Customer since ' + esc(c.since) + ' · last reviewed ' + esc(c.reviewed) + '</small></span><b>' + esc(c.terms) + '</b></div>' +
+        (app ? '<div class="row fig"><span>Increase requested<small>' + esc(app.ref) + ' · submitted ' + esc(app.submitted) + '</small></span><b class="warn">' + money(app.amount) + '</b></div>' : '') + '</div>' +
+        '<div class="table-foot"><span>' + esc(c.contact) + '</span>' + (app ? '<button type="button" class="lnk" data-credit-view>Application status</button>' : '<button type="button" class="lnk" data-credit-apply>Request an increase</button>') + '</div>';
+    } else if (c.status === 'pending') {
+      html = '<div class="credit-head"><div><b>Under review</b><span>Application ' + esc(app.ref) + ' · submitted ' + esc(app.submitted) + '</span></div><span class="status processing">In review</span></div>' +
+        '<div class="list"><div class="row fig"><span>Requested<small>' + esc(app.terms) + ' terms</small></span><b>' + money(app.amount) + '</b></div><div class="row fig"><span>What happens next<small>Accounts Receivable checks the trade and bank references and replies within two business days. Until then, orders run on card or prepayment.</small></span></div></div>' +
+        '<div class="table-foot"><span>Credit team · (816) 555-0190</span><button type="button" class="lnk" data-credit-view>View application</button></div>';
+    } else {
+      html = '<div class="credit-head"><div><b>No credit line yet</b><span>Orders and rentals run on card or prepayment</span></div></div>' +
+        '<p class="credit-copy">An open account lets you order parts, book service and rent trucks on ' + esc(S.credit.terms === 'Prepay' ? 'Net 30' : 'Net 30') + ' terms with one monthly statement. The application takes about ten minutes; most decisions come back within two business days.</p>' +
+        '<div class="table-foot"><button type="button" class="btn btn-primary" data-credit-apply>Apply for credit</button><span>No fee · no hard pull on personal credit for incorporated businesses</span></div>';
+    }
+    root.innerHTML = html;
+    qsa('[data-credit-apply]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowCreditApp(); }); });
+    qsa('[data-credit-view]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowCreditStatus(); }); });
+  }
+  function flowCreditStatus() {
+    var c = S.credit, app = c.application, emp = isEmployee();
+    var stages = [['Submitted', app.submitted], ['References checked', app.stage >= 1 ? app.updated || 'Today' : ''], ['Decision', app.stage >= 2 ? app.updated || 'Today' : '']];
+    openDrawer({
+      kind: 'Credit application · ' + app.ref, title: money(app.amount) + ' requested', meta: esc(app.legal) + ' · ' + esc(app.terms) + ' terms',
+      body: '<ol class="stages" aria-label="Application progress">' + stagesHtml(stages, app.stage || 0) + '</ol><dl class="dr-facts"><dt>Business</dt><dd>' + esc(app.legal) + (app.dba ? ' dba ' + esc(app.dba) : '') + '</dd><dt>Entity</dt><dd>' + esc(app.entity) + ' · since ' + esc(app.years) + '</dd><dt>Monthly volume</dt><dd>' + money(app.monthly) + '</dd><dt>References</dt><dd>' + app.refs.length + ' trade · ' + esc(app.bank) + '</dd><dt>Signed</dt><dd>' + esc(app.signer) + ', ' + esc(app.submitted) + '</dd></dl><p class="form-note">A copy was emailed to ' + esc(app.email) + '. Changes go through the credit team.</p>',
+      foot: emp && c.status === 'pending' ? '<button type="button" class="btn btn-primary" id="cr-approve">Approve ' + money(app.amount) + ' on ' + esc(app.terms) + '</button><span class="wo-note">Writes the limit to the account and notifies the customer.</span>' : '<a href="#" class="lnk">Download PDF</a><a href="team.html" class="lnk">Question for the credit team</a>',
+      after: function () {
+        var ap = $('cr-approve'); if (ap) ap.addEventListener('click', function () {
+          confirmInline($('dr-foot'), 'Approve a ' + money(app.amount) + ' line on ' + app.terms + ' for ' + S.user.org + '?', 'Approve', function () {
+            c.status = 'active'; c.limit = app.amount; c.used = c.used || 0; c.terms = app.terms; c.since = '2026'; c.reviewed = 'Today'; c.contact = 'Accounts Receivable · (816) 555-0190'; app.stage = 2; app.updated = 'Today'; c.application = null;
+            save(); addNotification({ title: 'Credit approved', text: money(app.amount) + ' open account on ' + app.terms + ' terms. Orders and rentals can bill to the account from today.', href: 'billing.html#credit' });
+            closeDrawer(); toast('Credit approved.'); renderPage();
+          });
+        });
+      }
+    });
+  }
+  function flowCreditApp() {
+    var c = S.credit, increase = c.status === 'active';
+    var step = 0, data = { refs: [] };
+    var names = ['Business', 'Ownership', 'References', 'Request', 'Sign'];
+    var org = S.user.org;
+    function stepper() { return '<ol class="cr-steps" aria-label="Application steps">' + names.map(function (n, i) { return '<li class="' + (i < step ? 'done' : i === step ? 'on' : '') + '"><span>' + (i + 1) + '</span>' + n + '</li>'; }).join('') + '</ol>'; }
+    function body() {
+      var f = '';
+      if (step === 0) f = '<div class="form-2"><label>Legal business name<input type="text" id="cr-legal" required value="' + esc(data.legal || org) + '"></label><label>DBA, if any<input type="text" id="cr-dba" value="' + esc(data.dba || '') + '"></label></div><div class="form-2"><label>Federal EIN<input type="text" id="cr-ein" inputmode="numeric" required placeholder="12-3456789" value="' + esc(data.ein || '') + '"></label><label>Entity type<select id="cr-entity">' + ['LLC', 'S corporation', 'C corporation', 'Partnership', 'Sole proprietor', 'Municipality or co-op'].map(function (o) { return '<option' + (data.entity === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label></div><div class="form-2"><label>Year established<input type="text" id="cr-years" inputmode="numeric" required value="' + esc(data.years || '') + '" placeholder="2012"></label><label>Industry<select id="cr-ind">' + ['Electric utility contractor', 'Telecom contractor', 'Tree care', 'Municipal / public works', 'Sign and lighting', 'General construction', 'Other'].map(function (o) { return '<option' + (data.ind === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label></div><label>Billing address<input type="text" id="cr-addr" required value="' + esc(data.addr || '1180 Garrisonville Rd, Stafford, VA 22554') + '"></label><div class="form-2"><label>AP contact<input type="text" id="cr-ap" required value="' + esc(data.ap || personaInfo().name) + '"></label><label>AP email<input type="email" id="cr-email" required value="' + esc(data.email || 'ap@' + org.toLowerCase().replace(/[^a-z]/g, '') + '.com') + '"></label></div>';
+      if (step === 1) f = '<p class="form-note" style="margin-top:0">Owners, officers or members with 20% or more. Incorporated businesses: no personal guarantee is required under $150,000.</p><div class="form-2"><label>Name<input type="text" id="cr-o1" required value="' + esc(data.o1 || personaInfo().name) + '"></label><label>Title<input type="text" id="cr-t1" required value="' + esc(data.t1 || personaInfo().role) + '"></label></div><div class="form-2"><label>Ownership<input type="text" id="cr-p1" inputmode="numeric" required value="' + esc(data.p1 || '100') + '" placeholder="%"></label><label>Second owner, if any<input type="text" id="cr-o2" value="' + esc(data.o2 || '') + '" placeholder="Name and title"></label></div><label class="check"><input type="checkbox" id="cr-pg"' + (data.pg ? ' checked' : '') + '><span>Include a personal guarantee<small>Speeds approval for newer businesses and larger limits</small></span></label>';
+      if (step === 2) f = '<p class="form-note" style="margin-top:0">Three trade references you buy from on terms, plus your bank.</p>' + [0, 1, 2].map(function (i) { var r = data.refs[i] || {}; return '<div class="form-2 cr-ref"><label>Trade reference ' + (i + 1) + '<input type="text" class="cr-rn" ' + (i === 0 ? 'required ' : '') + 'value="' + esc(r.n || '') + '" placeholder="' + ['Altec Industries', 'Rush Truck Centers', 'Wesco'][i] + '"></label><label>Phone or email<input type="text" class="cr-rc" value="' + esc(r.c || '') + '"></label></div>'; }).join('') + '<div class="form-2"><label>Bank<input type="text" id="cr-bank" required value="' + esc(data.bank || '') + '" placeholder="Atlantic Union Bank"></label><label>Banker contact<input type="text" id="cr-bankc" value="' + esc(data.bankc || '') + '"></label></div>';
+      if (step === 3) f = '<div class="form-2"><label>' + (increase ? 'New limit requested' : 'Credit limit requested') + '<input type="text" id="cr-amt" inputmode="numeric" required value="' + esc(data.amount || (increase ? c.limit * 2 : 100000)) + '"></label><label>Terms<select id="cr-terms">' + ['Net 30', 'Net 45', 'Net 60'].map(function (o) { return '<option' + ((data.terms || 'Net 30') === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label></div><div class="form-2"><label>Expected monthly purchases<input type="text" id="cr-monthly" inputmode="numeric" required value="' + esc(data.monthly || 18000) + '"></label><label>Fleet size<input type="text" id="cr-fleet" inputmode="numeric" value="' + esc(data.fleet || (S.vehicles.length || '')) + '"></label></div><label class="check"><input type="checkbox" id="cr-po"' + (data.po ? ' checked' : '') + '><span>Purchase orders required on invoices</span></label><label class="check"><input type="checkbox" id="cr-tax"' + (data.tax ? ' checked' : '') + '><span>We will provide a resale or exemption certificate<small>FET and sales tax certificates live under Team, Account tax documents</small></span></label>' + (increase ? '<p class="form-note">Current line ' + money(c.limit) + ' on ' + esc(c.terms) + ', ' + money(c.used) + ' in use.</p>' : '');
+      if (step === 4) f = '<div class="cr-review"><div class="row fig"><span>Business</span><b>' + esc(data.legal) + '</b></div><div class="row fig"><span>Requested</span><b>' + money(+data.amount) + ' · ' + esc(data.terms) + '</b></div><div class="row fig"><span>References</span><b>' + data.refs.filter(function (r) { return r.n; }).length + ' trade · ' + esc(data.bank) + '</b></div></div><label class="check"><input type="checkbox" id="cr-auth" required><span>I am authorized to apply for credit on behalf of ' + esc(data.legal) + ' and I authorize Custom Truck One Source to verify the information above with the references and bank listed, and to obtain business credit reports.<small>Terms and conditions of sale apply to every purchase billed to the account.</small></span></label><label>Type your full name to sign<input type="text" id="cr-sign" required placeholder="' + esc(personaInfo().name) + '" autocomplete="off"></label><p class="form-note">Signed electronically, ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + '.</p>';
+      return stepper() + '<form class="form" id="cr-form">' + f + '</form>';
+    }
+    function collect() {
+      var g = function (id) { var e = $(id); return e ? e.value : ''; };
+      if (step === 0) { data.legal = g('cr-legal'); data.dba = g('cr-dba'); data.ein = g('cr-ein'); data.entity = g('cr-entity'); data.years = g('cr-years'); data.ind = g('cr-ind'); data.addr = g('cr-addr'); data.ap = g('cr-ap'); data.email = g('cr-email'); }
+      if (step === 1) { data.o1 = g('cr-o1'); data.t1 = g('cr-t1'); data.p1 = g('cr-p1'); data.o2 = g('cr-o2'); data.pg = !!($('cr-pg') && $('cr-pg').checked); }
+      if (step === 2) { data.refs = qsa('.cr-ref').map(function (w) { return { n: w.querySelector('.cr-rn').value, c: w.querySelector('.cr-rc').value }; }); data.bank = g('cr-bank'); data.bankc = g('cr-bankc'); }
+      if (step === 3) { data.amount = String(g('cr-amt')).replace(/[^0-9.]/g, ''); data.terms = g('cr-terms'); data.monthly = String(g('cr-monthly')).replace(/[^0-9.]/g, ''); data.fleet = g('cr-fleet'); data.po = !!($('cr-po') && $('cr-po').checked); data.tax = !!($('cr-tax') && $('cr-tax').checked); }
+    }
+    function foot() { return (step > 0 ? '<button type="button" class="lnk" id="cr-back">Back</button>' : '') + '<button type="submit" form="cr-form" class="btn btn-primary">' + (step === 4 ? 'Submit application' : 'Continue') + '</button><span class="wo-note">Step ' + (step + 1) + ' of 5' + (step === 0 ? ' · about ten minutes' : '') + '</span>'; }
+    function paint() {
+      $('dr-body').innerHTML = body(); $('dr-foot').innerHTML = foot();
+      var bk = $('cr-back'); if (bk) bk.addEventListener('click', function () { collect(); step -= 1; paint(); });
+      $('cr-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (step < 4) { collect(); step += 1; paint(); $('dr-body').scrollTop = 0; return; }
+        var ref = 'CA-' + new Date().getFullYear() + '-' + String(1000 + Math.floor(Math.random() * 9000));
+        c.application = { ref: ref, submitted: 'Today', amount: +data.amount, terms: data.terms, legal: data.legal, dba: data.dba, entity: data.entity, years: data.years, monthly: +data.monthly, refs: data.refs.filter(function (r) { return r.n; }), bank: data.bank, signer: $('cr-sign').value, email: data.email, stage: 0, increase: increase };
+        if (!increase) c.status = 'pending';
+        save();
+        addNotification({ title: (increase ? 'Credit increase' : 'Credit application') + ' ' + ref + ' received', text: money(+data.amount) + ' on ' + data.terms + '. Accounts Receivable replies within two business days; a copy went to ' + data.email + '.', href: 'billing.html#credit' });
+        closeDrawer(); toast('Application ' + ref + ' submitted.'); renderPage();
+      });
+    }
+    openDrawer({ kind: increase ? 'Request a credit increase' : 'Credit application', title: increase ? 'Raise the line for ' + org : 'Open an account for ' + org, meta: increase ? 'Current line ' + money(c.limit) + ' · ' + c.terms : 'Five short steps · decisions usually within two business days', body: '', foot: '', after: paint });
+  }
 
   /* ---------- tabs (parts page) ---------- */
   function initTabs() {
