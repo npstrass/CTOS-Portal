@@ -1486,3 +1486,18 @@ table.orders th:nth-child(2) { width: 32%; }
 .actions .action { grid-column: span 2; }
 .actions .action:nth-child(4), .actions .action:nth-child(5) { grid-column: span 3; }
 @media (max-width: 900px) { .actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } .actions .action { grid-column: span 1; } .actions .action:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
+/* ---------- Parts order drawer ---------- */
+.cart-find { display: flex; gap: 8px; margin-bottom: 6px; }
+.cart-find .inv-search { flex: 1 1 auto; }
+.cart-find select { flex: 0 1 46%; min-width: 0; height: 36px; padding: 0 10px; font: inherit; font-size: 0.86rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
+.cart-find input { height: 36px; }
+.dr-sub { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.dr-sub .lnk, .dr-sub .muted { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 0.82rem; }
+.cart-picks .row.fig.li.part { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.cart-picks .row.fig.li.part > span:first-child { min-width: 0; }
+.cart-picks .row.fig.li.part small { overflow-wrap: anywhere; }
+.btn.sm { height: 30px; padding: 0 12px; font-size: 0.82rem; }
+#c-cart { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--line); }
+#c-cart .form { margin-top: 12px; }
+@media (max-width: 900px) { .cart-find { flex-wrap: wrap; } .cart-find select { flex: 1 1 100%; } }
