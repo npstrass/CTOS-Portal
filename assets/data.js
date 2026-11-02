@@ -450,6 +450,9 @@ window.CTOS_SEED = {
     { id: 'b3', name: 'Crane service truck, 7.5 t', spec: '2026 International MV607 · IMT 7500', detail: 'Cummins B6.7 · Allison 2500 · IMT 7500 crane, 30 ft · 11 ft service body · 40 cfm compressor · white', units: ['1104'], last: 'Jun 2023 · order T-1902', lastPrice: 184600, lead: '12 to 16 weeks' }
   ],
 
+  // Account pricing: negotiated discounts off CTOS list, applied to inventory, rental rates and parts.
+  pricing: { tier: 'Fleet Tier 2', truckPct: 6, rentalPct: 10, partsPct: 12, note: 'Negotiated Jan 2026 with Sarah Mitchell · renews Jan 2027', volume: '$1.2M in the last 12 months' },
+
   // Credit terms with CTOS. The application itself is a form in the portal; approval happens in Accounts Receivable.
   credit: { status: 'active', limit: 250000, used: 67660, terms: 'Net 30', since: '2019', reviewed: 'Jan 2026', contact: 'Accounts Receivable · (816) 555-0190', application: null },
 
