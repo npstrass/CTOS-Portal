@@ -47,6 +47,7 @@
     s.telemetry = { milesToday: 0, milesWeek: 0, idlePct: 0, mpg30: 0, uptime30: 0, fuelWeek: 0, idleAvgMin: 0, hardBraking: 0, serviced: 0 };
     s.users = [{ name: p.name, email: 'taylor@blueridgeproduce.com', role: 'owner', last: 'Now', status: 'active' }];
     s.reorder = []; s.autopay = false; s.builds = [];
+    s.pricing = { tier: 'Standard', truckPct: 0, rentalPct: 0, partsPct: 0, note: 'List pricing. Fleet tiers start at five units or $250k a year; ask Sarah.', volume: 'New account' };
     s.credit = { status: 'none', limit: 0, used: 0, terms: 'Prepay', since: '', reviewed: '', contact: 'Credit team · (816) 555-0190', application: null };
     s.notifications = [{ id: 'w1', level: '', read: false, title: 'Welcome to CTOS One', text: 'Add your first truck, or import your fleet from a spreadsheet, and we take it from there.', when: 'Just now', href: 'fleet-manage.html' }];
     s.team = base.team.slice(0, 1).concat(base.team.slice(2, 3));
@@ -264,11 +265,12 @@
     });
   }
   function flowRequestQuote(stock) {
-    var n = 1;
+    var stocks = Array.isArray(stock) ? stock : (stock ? [stock] : []);
+    var n = Math.max(1, stocks.length);
     function lineHtml(i, it) { var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : ''; return '<fieldset class="qline" data-line="' + i + '"' + (it ? ' data-stock="' + it.stock + '"' : '') + '><legend>Line ' + i + (it ? ' · stock ' + it.stock + ', ' + esc(it.loc) : '') + '</legend><div class="form-2"><label>New or used<select class="rq-cond">' + ['New', 'Used', 'Either'].map(function (o) { return '<option' + (o === cond ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label><label>Quantity<input type="text" class="rq-qty" inputmode="numeric" value="1"></label></div><label>Truck<input type="text" class="rq-subject" required placeholder="2026 Freightliner M2 106 · Altec AA55" value="' + (it ? esc(invTitle(it)) : '') + '"></label><label>Spec and must-haves<textarea class="rq-detail" rows="2" placeholder="Chassis, body, aerial or crane, insulation category, color">' + (it ? esc(it.chassis + ' · ' + it.spec) : '') + '</textarea></label></fieldset>'; }
     openDrawer({
       kind: 'Request a quote', title: 'Tell Sarah what you need', meta: 'Creates a Salesforce quote with one line per truck configuration',
-      body: '<form class="form" id="rq-form"><div id="rq-lines">' + lineHtml(1, stock) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
+      body: '<form class="form" id="rq-form"><div id="rq-lines">' + (stocks.length ? stocks.map(function (it, i) { return lineHtml(i + 1, it); }).join('') : lineHtml(1)) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
       foot: '<button type="submit" form="rq-form" class="btn btn-primary">Send request</button><a href="team.html" class="lnk">Call Sarah instead</a>',
       after: function () {
         $('rq-add').addEventListener('click', function () { n += 1; var w = document.createElement('div'); w.innerHTML = lineHtml(n); $('rq-lines').appendChild(w.children ? w.children[0] : w); });
@@ -280,7 +282,8 @@
           S.quotes.unshift({ no: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', lines: lines, note: ($('rq-by').value ? 'Needed by ' + $('rq-by').value + '. ' : '') + ($('rq-trade').value ? 'Trade-in: ' + $('rq-trade').value + '.' : '') });
           S.salesforce.lastSync = 'Just now'; save();
           addNotification({ title: no + ' sent to Sarah', text: lines.length + ' line' + (lines.length > 1 ? 's' : '') + ', ' + quoteUnits(S.quotes[0]) + ' truck' + (quoteUnits(S.quotes[0]) > 1 ? 's' : '') + '. She usually replies within a business day.', href: 'parts.html#trucks' });
-          closeDrawer(); toast('Request ' + no + ' sent.'); renderPage();
+          invBasket = []; closeDrawer(); toast('Request ' + no + ' sent to Sarah.'); renderPage();
+          if (document.body.getAttribute('data-page') === 'inventory') setTimeout(function () { location.href = 'parts.html#trucks'; }, 900);
         });
       }
     });
@@ -514,7 +517,7 @@
   // Saved state from an earlier version of the demo gets any keys added since.
   function migrate(who) {
     var fresh = who === 'taylor' ? newCustomerSeed(window.CTOS_SEED) : window.CTOS_SEED, changed = false;
-    ['inventory', 'builds', 'credit'].forEach(function (k) { if (S[k] === undefined) { S[k] = JSON.parse(JSON.stringify(fresh[k])); changed = true; } });
+    ['inventory', 'builds', 'credit', 'pricing'].forEach(function (k) { if (S[k] === undefined) { S[k] = JSON.parse(JSON.stringify(fresh[k])); changed = true; } });
     if (changed) save();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -685,7 +688,7 @@
       S.rentals.forEach(function (r) { items.push({ t: r.unit + ' · ' + r.spec, s: 'Due back ' + r.due, h: 'parts.html#rentals', k: 'Rental' }); });
       S.invoices.forEach(function (i) { items.push({ t: i.no, s: 'Unit #' + i.unit + ' · ' + i.desc + ' · ' + money(i.amount), h: 'billing.html', k: 'Invoice' }); });
       S.workorders.forEach(function (w) { items.push({ t: 'Work order · Unit #' + w.unit, s: w.where, h: 'service.html', k: 'Service' }); });
-      (S.inventory || []).forEach(function (it) { items.push({ t: invTitle(it) + ' · ' + it.stock, s: (it.sale ? 'For sale' : 'For rent') + ' · ' + it.loc, h: 'parts.html#inventory', k: 'Inventory' }); });
+      (S.inventory || []).forEach(function (it) { items.push({ t: invTitle(it) + ' · ' + it.stock, s: (it.sale ? 'For sale' : 'For rent') + ' · ' + it.loc, h: 'inventory.html', k: 'Buy & Rent' }); });
       (S.builds || []).forEach(function (b) { items.push({ t: b.name, s: b.spec, h: 'parts.html#trucks', k: 'Preferred build' }); });
       S.team.forEach(function (p) { items.push({ t: p.name, s: p.role, h: 'team.html', k: 'Team' }); });
       S.reports.forEach(function (r) { items.push({ t: r.name, s: r.period, h: 'reports.html#' + r.id, k: 'Report' }); });
@@ -883,7 +886,7 @@
     if (line) line.q += part.q; else S.cart.push({ pn: part.pn, d: part.d, q: part.q, p: part.p });
     save(); toast(part.d + ' added. ' + cartCount() + ' items in your order.'); renderCartBadge();
   }
-  function renderCartBadge() { qsa('[data-cart-count]').forEach(function (n) { var c = cartCount(); n.textContent = c ? 'New order · ' + c + ' items' : 'New order'; }); }
+  function renderCartBadge() { qsa('[data-cart-count]').forEach(function (n) { var c = cartCount(); n.textContent = c ? 'Order parts · ' + c + ' items' : 'Order parts'; }); }
   // Everything orderable: the reorder list, every as-built BOM, and common chassis service parts.
   var CHASSIS_PARTS = [['FL-OIL-15', 'Oil filter, Cummins B6.7', 34], ['FL-FUEL-9', 'Fuel filter kit, Cummins B6.7', 52], ['FL-AIR-22', 'Air filter, primary', 61], ['DEF-25', 'DEF fluid, 2.5 gal', 18], ['BRK-PAD-M2', 'Brake pads, front axle, M2 106', 184], ['WIP-28', 'Wiper blades, 28 in, pair', 24], ['BLB-H11', 'Headlamp bulb, H11', 16], ['MRK-LED', 'Marker lamp, LED amber', 22], ['PTO-SW', 'PTO switch, dash', 68], ['HYD-AW46', 'Hydraulic oil AW46, 5 gal', 89]];
   function catalog() {
@@ -1326,7 +1329,7 @@
       return '<tr class="' + r.state + '"><td class="id"><span class="ink">' + r.unit + '</span></td><td class="for"><span class="trunc">' + esc(r.spec) + '</span></td><td>' + r.started + '</td><td class="num eta"><strong>' + esc(r.due) + '</strong><span>' + sub + '</span></td><td class="num">' + money(r.rate) + '</td><td class="num">' + money(r.days * r.rate) + '</td><td class="act-col">' + act + '</td></tr>';
     }).join('') : '<tr><td colspan="7">' + emptyHtml('No active rentals.') + '</td></tr>';
     qsa('[data-rent]').forEach(function (b) { b.addEventListener('click', function () { flowRental(active[+b.getAttribute('data-rent')], b.getAttribute('data-act'), b.closest('tr')); }); });
-    renderQuotes(); renderFreight(); renderBuilds(); renderInventory(); initInventory();
+    renderQuotes(); renderFreight(); renderBuilds();
     renderCartBadge();
     if (!el_tabsInit) { el_tabsInit = true; initTabs(); }
   };
@@ -1442,79 +1445,127 @@
   };
 
 
-  /* ---------- inventory: sales and rental stock ---------- */
-  var invFilter = { mode: 'sale', kind: '', loc: '', cond: '', q: '' };
+  /* ---------- inventory: buy and rent ---------- */
+  var invFilter = { mode: 'sale', kind: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near' };
+  var invBasket = [];
   function invTitle(it) { return it.year + ' ' + it.make + ' ' + it.model + ' · ' + it.equip; }
+  function yourPrice(list) { return Math.round(list * (1 - (S.pricing.truckPct || 0) / 100)); }
+  function yourRate(list) { return Math.round(list * (1 - (S.pricing.rentalPct || 0) / 100)); }
+  function invAvailDate(it) { var m = (it.avail || '').match(/(Nov|Dec|Jan|Feb|Mar) (\d+)/); if (!m) return null; var mon = { Nov: 10, Dec: 11, Jan: 0, Feb: 1, Mar: 2 }[m[1]]; return new Date(mon <= 2 ? 2027 : 2026, mon, +m[2]); }
+  function invReady(it) { return /now|In stock/.test(it.avail) && !/Reserved/.test(it.avail); }
+  function invAvailFor(it) { // rental availability against the requested dates
+    if (/Reserved/.test(it.avail)) return { ok: false, text: it.avail };
+    if (!invFilter.from) return { ok: invReady(it), text: it.avail };
+    var want = new Date(invFilter.from + 'T12:00:00'), d = invAvailDate(it);
+    if (invReady(it) || (d && d <= want)) return { ok: true, text: 'Available for ' + want.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) };
+    return { ok: false, text: 'Not until ' + (d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'later') };
+  }
+  var LOC_MI = { 'Fredericksburg, VA': 14, 'Richmond, VA': 52, 'Union Grove, WI': 790, 'Kansas City, MO': 1050, 'Houston, TX': 1380 };
   function invMatches(it) {
     if (invFilter.mode === 'sale' && !it.sale) return false;
     if (invFilter.mode === 'rent' && !it.rent) return false;
     if (invFilter.kind && it.kind !== invFilter.kind) return false;
     if (invFilter.loc && it.loc.indexOf(invFilter.loc) < 0) return false;
     if (invFilter.cond && invFilter.mode === 'sale' && it.cond !== invFilter.cond) return false;
+    if (invFilter.avail === 'now' && !(invFilter.mode === 'rent' ? invAvailFor(it).ok : invReady(it))) return false;
     if (invFilter.q) { var hay = (it.stock + ' ' + invTitle(it) + ' ' + it.spec + ' ' + it.chassis + ' ' + it.loc + ' ' + it.kindName).toLowerCase(); if (hay.indexOf(invFilter.q.toLowerCase()) < 0) return false; }
     return true;
   }
+  function invSort(a, b) {
+    var s = invFilter.sort, pa = invFilter.mode === 'sale' ? a.price : a.rates.day, pb = invFilter.mode === 'sale' ? b.price : b.rates.day;
+    if (s === 'price') return pa - pb; if (s === 'priceDesc') return pb - pa; if (s === 'year') return b.year - a.year;
+    return (LOC_MI[a.loc] || 999) - (LOC_MI[b.loc] || 999) || pa - pb;
+  }
+  function invPriceHtml(it, sale) {
+    var pct = sale ? S.pricing.truckPct : S.pricing.rentalPct;
+    if (sale) return '<b>' + money(yourPrice(it.price)) + '</b>' + (pct ? '<s>' + money(it.price) + ' list</s>' : '') + '<span>' + (it.cond === 'new' ? 'Before tax, FET and title' : 'Certified · 90-day warranty') + '</span>';
+    var term = invFilter.term, est = term >= 90 ? yourRate(it.rates.month) * Math.round(term / 30) : term >= 30 ? yourRate(it.rates.month) : term >= 7 ? yourRate(it.rates.week) * Math.round(term / 7) : yourRate(it.rates.day) * term;
+    return '<b>' + money(yourRate(it.rates.day)) + '<small> / day</small></b>' + (pct ? '<s>' + money(it.rates.day) + ' list</s>' : '') + '<span>' + money(yourRate(it.rates.week)) + ' / wk · ' + money(yourRate(it.rates.month)) + ' / mo</span>' + (invFilter.from ? '<span class="term">About ' + money(est) + ' for the term</span>' : '');
+  }
   function invCard(it) {
-    var sale = invFilter.mode === 'sale';
-    var meter = it.cond === 'new' ? 'New' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : 'Rental fleet · ' + num(it.hours) + ' h');
-    var priceHtml = sale ? '<b>' + money(it.price) + '</b><span>' + (it.cond === 'new' ? 'Before tax, FET and title' : 'Certified, 90-day warranty') + '</span>' : '<b>' + money(it.rates.day) + '<small> / day</small></b><span>' + money(it.rates.week) + ' / wk · ' + money(it.rates.month) + ' / mo</span>';
-    var ready = /now|In stock/.test(it.avail);
-    var acts = sale ? '<button type="button" class="btn btn-ghost" data-inv-quote="' + it.stock + '">Request a quote</button><button type="button" class="lnk" data-inv-save="' + it.stock + '">Save as preferred build</button>' : '<button type="button" class="btn btn-ghost" data-inv-reserve="' + it.stock + '">Reserve</button><button type="button" class="lnk" data-inv-detail="' + it.stock + '">Details</button>';
-    return '<article class="inv-card" data-stock="' + it.stock + '"><div class="inv-top"><span class="inv-kind">' + esc(it.kindName) + '</span><span class="inv-stock mono">' + it.stock + '</span></div>' +
+    var sale = invFilter.mode === 'sale', inB = invBasket.indexOf(it.stock) >= 0, av = sale ? { ok: invReady(it), text: it.avail } : invAvailFor(it);
+    var meter = it.cond === 'new' ? 'New · ' + num(it.miles) + ' mi' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : 'Rental fleet · ' + num(it.hours) + ' h');
+    var acts = sale ? '<button type="button" class="btn ' + (inB ? 'btn-ghost on' : 'btn-ghost') + '" data-inv-pick="' + it.stock + '" aria-pressed="' + inB + '">' + (inB ? 'Added to quote' : 'Add to quote') + '</button><button type="button" class="lnk" data-inv-save="' + it.stock + '">Save build</button>' : '<button type="button" class="btn btn-ghost" data-inv-reserve="' + it.stock + '"' + (av.ok ? '' : ' disabled') + '>' + (av.ok ? 'Reserve' : 'Not available') + '</button><button type="button" class="lnk" data-inv-detail="' + it.stock + '">Details</button>';
+    return '<article class="inv-card' + (inB ? ' picked' : '') + '" data-stock="' + it.stock + '"><div class="inv-top"><span class="inv-kind">' + esc(it.kindName) + '</span><span class="inv-stock mono">' + it.stock + '</span></div>' +
       '<h4><button type="button" class="row-btn" data-inv-detail="' + it.stock + '">' + esc(invTitle(it)) + '</button></h4>' +
       '<p class="inv-spec">' + esc(it.spec) + '</p><p class="inv-chassis">' + esc(it.chassis) + ' · ' + esc(meter) + '</p>' +
-      '<div class="inv-foot"><div class="inv-where"><strong>' + esc(it.loc) + '</strong><span class="' + (ready ? 'ok-t' : '') + '">' + esc(it.avail) + '</span></div><div class="inv-price">' + priceHtml + '</div></div>' +
+      '<div class="inv-foot"><div class="inv-where"><strong>' + esc(it.loc) + (LOC_MI[it.loc] ? ' · ' + num(LOC_MI[it.loc]) + ' mi' : '') + '</strong><span class="' + (av.ok ? 'ok-t' : 'warn-t') + '">' + esc(av.text) + '</span></div><div class="inv-price">' + invPriceHtml(it, sale) + '</div></div>' +
       '<div class="inv-acts">' + acts + '</div></article>';
   }
+  function renderPricingStrip() {
+    var el = $('inv-pricing'); if (!el) return; var p = S.pricing, sale = invFilter.mode === 'sale';
+    el.innerHTML = '<div><span class="ps-tier">' + esc(p.tier) + '</span><span class="ps-note">' + esc(p.note) + '</span></div><dl class="ps-facts"><div><dt>Trucks</dt><dd>' + (p.truckPct ? p.truckPct + '% off list' : 'List') + '</dd></div><div><dt>Rentals</dt><dd>' + (p.rentalPct ? p.rentalPct + '% off rate card' : 'Rate card') + '</dd></div><div><dt>Parts</dt><dd>' + (p.partsPct ? p.partsPct + '% off list' : 'List') + '</dd></div><div><dt>Terms</dt><dd>' + esc(S.credit.status === 'active' ? S.credit.terms + ' · ' + money(S.credit.limit - S.credit.used) + ' available' : 'Card or prepay') + '</dd></div></dl>';
+  }
+  function renderBasket() {
+    var panel = $('inv-basket-panel'); if (!panel) return;
+    panel.hidden = !invBasket.length;
+    var btn = $('inv-quote-btn'); if (btn) btn.firstChild.textContent = invBasket.length ? 'Request quote for ' + invBasket.length + ' truck' + (invBasket.length > 1 ? 's' : '') + ' ' : 'Request a quote ';
+    if (!invBasket.length) return;
+    var items = invBasket.map(function (s) { return S.inventory.filter(function (x) { return x.stock === s; })[0]; });
+    $('inv-basket-n').textContent = money(sum(items.map(function (it) { return yourPrice(it.price); }))) + ' at your price';
+    $('inv-basket').innerHTML = items.map(function (it) { return '<div class="row fig"><span>' + esc(invTitle(it)) + '<small>' + it.stock + ' · ' + esc(it.loc) + '</small></span><button type="button" class="lnk" data-inv-pick="' + it.stock + '" aria-label="Remove ' + it.stock + '">Remove</button></div>'; }).join('');
+    qsa('[data-inv-pick]', $('inv-basket')).forEach(function (b) { b.addEventListener('click', function () { togglePick(b.getAttribute('data-inv-pick')); }); });
+  }
+  function togglePick(stock) { var i = invBasket.indexOf(stock); if (i >= 0) invBasket.splice(i, 1); else invBasket.push(stock); renderInventory(); }
   function renderInventory() {
     var root = $('inv-results'); if (!root) return;
-    var items = S.inventory.filter(invMatches);
-    var locs = []; S.inventory.forEach(function (it) { var l = it.loc; if (locs.indexOf(l) < 0) locs.push(l); });
-    var ls = $('inv-loc'); if (ls && ls.options.length <= 1) ls.innerHTML = '<option value="">Any CTOS location</option>' + locs.sort().map(function (l) { return '<option>' + esc(l) + '</option>'; }).join('');
+    var items = S.inventory.filter(invMatches).sort(invSort);
+    var locs = []; S.inventory.forEach(function (it) { if (locs.indexOf(it.loc) < 0) locs.push(it.loc); });
+    var ls = $('inv-loc'); if (ls && ls.options.length <= 1) ls.innerHTML = '<option value="">Any CTOS location</option>' + locs.sort(function (a, b) { return (LOC_MI[a] || 999) - (LOC_MI[b] || 999); }).map(function (l) { return '<option>' + esc(l) + (LOC_MI[l] ? ' · ' + num(LOC_MI[l]) + ' mi' : '') + '</option>'; }).join('');
     qsa('[data-inv-mode]').forEach(function (b) { var on = b.getAttribute('data-inv-mode') === invFilter.mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
     var cw = $('inv-cond-wrap'); if (cw) cw.hidden = invFilter.mode !== 'sale';
-    $('inv-count').textContent = items.length ? items.length + ' truck' + (items.length === 1 ? '' : 's') + (invFilter.mode === 'sale' ? ' for sale' : ' available to rent') : 'No matches';
-    root.innerHTML = items.length ? items.map(invCard).join('') : emptyHtml('Nothing matches those filters. Clear one, or ask Sarah; CTOS has more than 10,000 units nationally and she can locate one.');
-    qsa('[data-inv-quote]').forEach(function (b) { b.addEventListener('click', function () { flowRequestQuote(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-quote'); })[0]); }); });
-    qsa('[data-inv-save]').forEach(function (b) { b.addEventListener('click', function () { var it = S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-save'); })[0]; flowSaveBuild({ spec: it.year + ' ' + it.make + ' ' + it.model + ' · ' + it.equip, detail: it.chassis + ' · ' + it.spec + ' · ' + it.color.toLowerCase(), lastPrice: it.price }); }); });
+    var dw = $('inv-dates'); if (dw) dw.hidden = invFilter.mode !== 'rent';
+    var sale = invFilter.mode === 'sale';
+    $('inv-count').textContent = items.length ? items.length + ' truck' + (items.length === 1 ? '' : 's') + (sale ? ' for sale' : ' to rent') + (invFilter.from ? ' from ' + new Date(invFilter.from + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : 'No matches';
+    var ready = S.inventory.filter(function (it) { return it.sale && invReady(it); }).length, rent = S.inventory.filter(function (it) { return it.rent && invReady(it); }).length;
+    var fnd = $('inv-finding'); if (fnd) fnd.innerHTML = ready + ' trucks in stock for sale and ' + rent + ' available to rent, at ' + esc(S.pricing.tier) + ' pricing' + (S.pricing.truckPct ? ' (' + S.pricing.truckPct + '% off list)' : '') + '. Nearest stock is at Fredericksburg, 14 miles from your yard. Pick trucks to build one quote request, or reserve a rental against your dates.';
+    root.innerHTML = items.length ? items.map(invCard).join('') : emptyHtml('Nothing matches those filters. Clear one, or describe what you need and Sarah locates it from national stock.');
+    qsa('[data-inv-pick]', root).forEach(function (b) { b.addEventListener('click', function () { togglePick(b.getAttribute('data-inv-pick')); }); });
+    qsa('[data-inv-save]').forEach(function (b) { b.addEventListener('click', function () { var it = S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-save'); })[0]; flowSaveBuild({ spec: invTitle(it), detail: it.chassis + ' · ' + it.spec + ' · ' + it.color.toLowerCase(), lastPrice: it.price }); }); });
     qsa('[data-inv-reserve]').forEach(function (b) { b.addEventListener('click', function () { flowReserve(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-reserve'); })[0], b.closest('.inv-card')); }); });
     qsa('[data-inv-detail]').forEach(function (b) { b.addEventListener('click', function () { flowInventoryDetail(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-detail'); })[0], b.closest('.inv-card')); }); });
+    renderPricingStrip(); renderBasket();
   }
   function initInventory() {
     if (!$('inv-results')) return;
+    var m = location.search.match(/[?&]mode=(rent|sale)/); if (m) invFilter.mode = m[1];
     qsa('[data-inv-mode]').forEach(function (b) { once(b, 'click', function () { invFilter.mode = b.getAttribute('data-inv-mode'); renderInventory(); }); });
-    [['inv-kind', 'kind'], ['inv-loc', 'loc'], ['inv-cond', 'cond']].forEach(function (p) { once($(p[0]), 'change', function () { invFilter[p[1]] = $(p[0]).value; renderInventory(); }); });
+    [['inv-kind', 'kind'], ['inv-loc', 'loc'], ['inv-cond', 'cond'], ['inv-avail', 'avail'], ['inv-from', 'from'], ['inv-sort', 'sort']].forEach(function (p) { once($(p[0]), 'change', function () { invFilter[p[1]] = $(p[0]).value; renderInventory(); }); });
+    once($('inv-term'), 'change', function () { invFilter.term = +$('inv-term').value; renderInventory(); });
     once($('inv-q'), 'input', function () { invFilter.q = $('inv-q').value.trim(); renderInventory(); });
-    once($('inv-clear'), 'click', function (e) { e.preventDefault(); invFilter = { mode: invFilter.mode, kind: '', loc: '', cond: '', q: '' }; ['inv-kind', 'inv-loc', 'inv-cond', 'inv-q'].forEach(function (id) { if ($(id)) $(id).value = ''; }); renderInventory(); });
-    qsa('[data-inv-go]').forEach(function (a) { once(a, 'click', function () { invFilter.mode = a.getAttribute('data-inv-go'); renderInventory(); }); });
+    once($('inv-clear'), 'click', function (e) { e.preventDefault(); invFilter = { mode: invFilter.mode, kind: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near' }; ['inv-kind', 'inv-loc', 'inv-cond', 'inv-q', 'inv-avail', 'inv-from'].forEach(function (id) { if ($(id)) $(id).value = ''; }); if ($('inv-term')) $('inv-term').value = '30'; if ($('inv-sort')) $('inv-sort').value = 'near'; renderInventory(); });
+    function go() { if (invBasket.length) flowRequestQuote(invBasket.map(function (s) { return S.inventory.filter(function (x) { return x.stock === s; })[0]; })); else flowRequestQuote(); }
+    once($('inv-quote-btn'), 'click', go); once($('inv-basket-go'), 'click', go);
   }
+  renderers.inventory = function () { initInventory(); renderInventory(); };
   function flowInventoryDetail(it, row) {
-    var sale = it.sale && invFilter.mode === 'sale';
+    var pct = S.pricing.truckPct, rp = S.pricing.rentalPct;
     openDrawer({
       kind: esc(it.kindName) + ' · ' + it.stock, title: invTitle(it), meta: it.loc + ' · ' + it.avail,
       body: '<dl class="dr-facts"><dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
         '<h4 class="dr-h">Specification</h4><div class="list li-list"><div class="row fig li"><span>Chassis<small>' + esc(it.chassis) + '</small></span></div><div class="row fig li"><span>Equipment<small>' + esc(it.equip) + ' · ' + esc(it.spec) + '</small></span></div></div>' +
-        (it.sale ? '<div class="row fig total"><span>Purchase price<small>Before tax, FET and title</small></span><b>' + money(it.price) + '</b></div>' : '') +
-        (it.rent ? '<div class="row fig total"><span>Rental rates<small>Before tax and damage waiver · delivery quoted separately</small></span><b>' + money(it.rates.day) + ' / day<small style="display:block;font-weight:400">' + money(it.rates.week) + ' / wk · ' + money(it.rates.month) + ' / mo</small></b></div>' : ''),
-      foot: (it.sale ? '<button type="button" class="btn btn-primary" id="inv-d-quote">Request a quote</button>' : '') + (it.rent ? '<button type="button" class="btn ' + (it.sale ? 'btn-ghost' : 'btn-primary') + '" id="inv-d-reserve">Reserve</button>' : '') + (it.sale ? '<button type="button" class="lnk" id="inv-d-save">Save as preferred build</button>' : ''),
+        (it.sale ? '<div class="row fig total"><span>Your price<small>' + esc(S.pricing.tier) + (pct ? ' · ' + pct + '% off list of ' + money(it.price) : '') + ' · before tax, FET and title</small></span><b>' + money(yourPrice(it.price)) + '</b></div>' : '') +
+        (it.rent ? '<div class="row fig total"><span>Your rental rates<small>' + (rp ? rp + '% off the rate card · ' : '') + 'before tax and damage waiver · delivery quoted separately</small></span><b>' + money(yourRate(it.rates.day)) + ' / day<small style="display:block;font-weight:400">' + money(yourRate(it.rates.week)) + ' / wk · ' + money(yourRate(it.rates.month)) + ' / mo</small></b></div>' : ''),
+      foot: (it.sale ? '<button type="button" class="btn btn-primary" id="inv-d-quote">' + (invBasket.indexOf(it.stock) >= 0 ? 'Remove from quote request' : 'Add to quote request') + '</button>' : '') + (it.rent ? '<button type="button" class="btn ' + (it.sale ? 'btn-ghost' : 'btn-primary') + '" id="inv-d-reserve">Reserve</button>' : '') + (it.sale ? '<button type="button" class="lnk" id="inv-d-save">Save as preferred build</button>' : ''),
       row: row,
       after: function () {
-        var q = $('inv-d-quote'); if (q) q.addEventListener('click', function () { flowRequestQuote(it); });
+        var q = $('inv-d-quote'); if (q) q.addEventListener('click', function () { togglePick(it.stock); closeDrawer(); });
         var r = $('inv-d-reserve'); if (r) r.addEventListener('click', function () { flowReserve(it, row); });
         var s = $('inv-d-save'); if (s) s.addEventListener('click', function () { flowSaveBuild({ spec: invTitle(it), detail: it.chassis + ' · ' + it.spec + ' · ' + it.color.toLowerCase(), lastPrice: it.price }); });
       }
     });
   }
   function flowReserve(it, row) {
-    var d = new Date(); d.setDate(d.getDate() + 2); var iso = d.toISOString().slice(0, 10);
+    var d = invFilter.from ? new Date(invFilter.from + 'T12:00:00') : new Date(); if (!invFilter.from) d.setDate(d.getDate() + 2); var iso = d.toISOString().slice(0, 10);
     var sites = S.sites.filter(function (s) { return s.type !== 'CTOS location'; });
+    var rp = S.pricing.rentalPct;
     openDrawer({
       kind: 'Reserve a rental', title: invTitle(it), meta: it.stock + ' · ' + it.loc + ' · ' + it.avail,
-      body: '<form class="form" id="rsv-form"><div class="form-2"><label>Start<input type="date" id="rsv-start" value="' + iso + '" required></label><label>Term<select id="rsv-term"><option value="7">1 week</option><option value="14">2 weeks</option><option value="30" selected>1 month</option><option value="90">3 months</option></select></label></div>' +
+      body: '<form class="form" id="rsv-form"><div class="form-2"><label>Start<input type="date" id="rsv-start" value="' + iso + '" required></label><label>Term<select id="rsv-term">' + [[7, '1 week'], [14, '2 weeks'], [30, '1 month'], [90, '3 months'], [180, '6 months']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === invFilter.term ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label></div>' +
         '<fieldset><legend>Delivery</legend><label class="radio"><input type="radio" name="rsv-how" value="deliver" checked><span>Deliver to a site<small>CTOS Logistics quotes the move; usually next business day</small></span></label><label class="radio"><input type="radio" name="rsv-how" value="pickup"><span>Pick up at ' + esc(it.loc) + '<small>Ready at 7:00 AM on the start date</small></span></label></fieldset>' +
         '<label id="rsv-site-wrap">Deliver to<select id="rsv-site">' + sites.map(function (s) { return '<option>' + esc(s.name) + '</option>'; }).join('') + '<option>Other address</option></select></label>' +
         '<label>Operator or driver<input type="text" id="rsv-driver" placeholder="Who will be running it"></label>' +
-        '<p class="form-note">Rate ' + money(it.rates.day) + ' per day, ' + money(it.rates.month) + ' per month, before tax and damage waiver. Billing follows your account terms (' + esc(S.credit.terms) + ').</p></form>',
+        '<p class="form-note">Your rate ' + money(yourRate(it.rates.day)) + ' per day, ' + money(yourRate(it.rates.month)) + ' per month' + (rp ? ' (' + rp + '% off the rate card)' : '') + ', before tax and damage waiver. Bills ' + (S.credit.status === 'active' ? 'to your account on ' + esc(S.credit.terms) : 'to a card on file') + '.</p></form>',
       foot: '<button type="submit" form="rsv-form" class="btn btn-primary">Reserve ' + it.stock + '</button><a href="team.html" class="lnk">Call Jordan instead</a>',
       row: row,
       after: function () {
@@ -1525,12 +1576,11 @@
           var fmt = function (x) { return x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
           var pick = (document.querySelector('input[name="rsv-how"][value="pickup"]') || {}).checked;
           var where = pick ? 'Pick up at ' + it.loc : 'Deliver to ' + $('rsv-site').value;
-          S.rentals.push({ unit: it.stock, spec: invTitle(it).replace(' · ', ' · ') + ' ' + it.kindName.toLowerCase(), started: fmt(st), due: fmt(en), days: 0, rate: it.rates.day, state: 'reserved', status: 'Reserved', loc: it.loc, driver: $('rsv-driver').value, kind: it.kindName, nextService: '', where: where });
+          S.rentals.push({ unit: it.stock, spec: invTitle(it) + ' ' + it.kindName.toLowerCase(), started: fmt(st), due: fmt(en), days: 0, rate: yourRate(it.rates.day), state: 'reserved', status: 'Reserved', loc: it.loc, driver: $('rsv-driver').value, kind: it.kindName, nextService: '', where: where });
           it.avail = 'Reserved for ' + S.user.org;
           save();
           addNotification({ title: it.stock + ' reserved', text: invTitle(it) + ', ' + fmt(st) + ' to ' + fmt(en) + '. ' + where + '. Jordan confirms within the hour.', href: 'parts.html#rentals' });
-          closeDrawer(); toast(it.stock + ' reserved from ' + fmt(st) + '.'); renderPage();
-          location.hash = '#rentals';
+          closeDrawer(); toast(it.stock + ' reserved from ' + fmt(st) + '. It is on your Rentals tab.'); renderPage();
         });
       }
     });
