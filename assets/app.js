@@ -1542,7 +1542,7 @@
   function partCat(it) { var f = (it.fits || []).join(' '); if (/Chassis/.test(f) || !f) return 'chassis'; if (/AA55|AT40G|XT55|VST|DTAX|Hi-Ranger|Optima|AM55/.test(f)) return 'aerial'; if (/DC47|C4047|DM47|HV|derrick/i.test(f)) return 'derrick'; if (/IMT|Palfinger|Auto Crane|National/.test(f)) return 'crane'; return 'body'; }
   function partRowHtml(it, showFits) {
     var line = S.cart.filter(function (c) { return c.pn === it.pn; })[0], n = line ? line.q : 0, yp = partPrice(it.p), pct = S.pricing.partsPct;
-    return '<div class="row fig li part"><span>' + esc(it.d) + '<small>' + esc(it.pn) + (showFits && it.fits && it.fits.length ? ' · fits ' + esc(it.fits.slice(0, 2).join(', ')) + (it.fits.length > 2 ? ' +' + (it.fits.length - 2) : '') : '') + '</small></span><span class="part-price"><b>' + money(yp) + '</b>' + (pct ? '<s>' + money(it.p) + '</s>' : '') + '</span>' + (n ? '<span class="qty"><button type="button" data-pn="' + esc(it.pn) + '" data-q="-1" aria-label="Fewer">−</button><b>' + n + '</b><button type="button" data-pn="' + esc(it.pn) + '" data-q="1" aria-label="More">+</button></span>' : '<button type="button" class="btn btn-ghost sm" data-add-pn="' + esc(it.pn) + '">Add' + (it.q > 1 ? ' ' + it.q : '') + '</button>') + '</div>';
+    return '<div class="row fig li part"><span>' + esc(it.d) + '<small>' + esc(it.pn) + (showFits && it.fits && it.fits.length ? ' · fits ' + esc(it.fits.slice(0, 2).join(', ')) + (it.fits.length > 2 ? ' +' + (it.fits.length - 2) : '') : '') + '</small></span><span class="part-price"><b>' + money(yp) + '</b>' + (pct ? '<s>' + money(it.p) + '</s>' : '') + '</span>' + (n ? '<span class="qty"><button type="button" data-pn="' + esc(it.pn) + '" data-q="-1" aria-label="Fewer">−</button><b>' + n + '</b><button type="button" data-pn="' + esc(it.pn) + '" data-q="1" aria-label="More">+</button></span>' : '<span class="addq"><input type="text" inputmode="numeric" value="' + (it.q || 1) + '" aria-label="Quantity" data-qty-for="' + esc(it.pn) + '"><button type="button" class="btn btn-ghost sm" data-add-pn="' + esc(it.pn) + '">Add</button></span>') + '</div>';
   }
   function renderShopParts() {
     var root = $('sp-results'); if (!root) return;
@@ -1552,7 +1552,7 @@
     var items = pool.filter(function (it) { return (!t || (it.pn + ' ' + it.d + ' ' + (it.fits || []).join(' ')).toLowerCase().indexOf(t) >= 0) && (!spF.cat || partCat(it) === spF.cat); });
     $('sp-count').textContent = (items.length ? items.length + ' part' + (items.length === 1 ? '' : 's') : 'No parts') + (v ? ' that fit Unit #' + v.unit : '') + (t ? ' matching "' + spF.q + '"' : '');
     $('sp-note').textContent = v ? 'From the as-built record: ' + (v.components || []).map(function (c2) { return c2.make + ' ' + c2.model; }).join(', ') : 'Reorder list, every as-built BOM in your fleet, and common service parts';
-    function tr(it) { var line = S.cart.filter(function (c2) { return c2.pn === it.pn; })[0], n = line ? line.q : 0, pct = S.pricing.partsPct; return '<tr' + (n ? ' class="picked"' : '') + '><td class="for"><span class="ink">' + esc(it.d) + '</span></td><td class="mono">' + esc(it.pn) + '</td><td class="fits">' + esc((it.fits || []).slice(0, 2).join(', ') + ((it.fits || []).length > 2 ? ' +' + (it.fits.length - 2) : '')) + '</td><td class="num"><strong>' + money(partPrice(it.p)) + '</strong></td><td class="num muted">' + (pct ? money(it.p) : '') + '</td><td class="act-col">' + (n ? '<span class="qty"><button type="button" data-pn="' + esc(it.pn) + '" data-q="-1" aria-label="Fewer">−</button><b>' + n + '</b><button type="button" data-pn="' + esc(it.pn) + '" data-q="1" aria-label="More">+</button></span>' : '<button type="button" class="btn btn-ghost sm" data-add-pn="' + esc(it.pn) + '">Add' + (it.q > 1 ? ' ' + it.q : '') + '</button>') + '</td></tr>'; }
+    function tr(it) { var line = S.cart.filter(function (c2) { return c2.pn === it.pn; })[0], n = line ? line.q : 0, pct = S.pricing.partsPct; return '<tr' + (n ? ' class="picked"' : '') + '><td class="for"><span class="ink">' + esc(it.d) + '</span></td><td class="mono">' + esc(it.pn) + '</td><td class="fits">' + esc((it.fits || []).slice(0, 2).join(', ') + ((it.fits || []).length > 2 ? ' +' + (it.fits.length - 2) : '')) + '</td><td class="num"><strong>' + money(partPrice(it.p)) + '</strong></td><td class="num muted">' + (pct ? money(it.p) : '') + '</td><td class="act-col">' + (n ? '<span class="qty"><button type="button" data-pn="' + esc(it.pn) + '" data-q="-1" aria-label="Fewer">−</button><b>' + n + '</b><button type="button" data-pn="' + esc(it.pn) + '" data-q="1" aria-label="More">+</button></span>' : '<span class="addq"><input type="text" inputmode="numeric" value="' + (it.q || 1) + '" aria-label="Quantity" data-qty-for="' + esc(it.pn) + '"><button type="button" class="btn btn-ghost sm" data-add-pn="' + esc(it.pn) + '">Add</button></span>') + '</td></tr>'; }
     if (v && !t && !spF.cat) {
       var groups = []; items.forEach(function (it) { var g = groups.filter(function (x) { return x.name === it.group; })[0]; if (!g) { g = { name: it.group, items: [] }; groups.push(g); } g.items.push(it); });
       root.innerHTML = groups.map(function (g) { return '<tr class="group"><th colspan="6" scope="rowgroup">' + esc(g.name) + '</th></tr>' + g.items.map(tr).join(''); }).join('') || '<tr><td colspan="6">' + emptyHtml('No as-built record for this unit yet. Search by part number instead.') + '</td></tr>';
@@ -1560,7 +1560,7 @@
     $('sp-reorder').innerHTML = S.reorder.length ? S.reorder.map(function (r) { return partRowHtml({ pn: r.pn, d: r.d, p: r.p, q: r.q, fits: [] }, false); }).join('') : emptyHtml('Nothing yet. Parts you order often show up here.');
     $('sp-recent').innerHTML = S.orderHistory.length ? S.orderHistory.slice(0, 3).map(function (h) { return '<div class="row fig li part"><span>Order ' + h.no + '<small>' + esc(h.for) + ' · ' + h.date + ' · ' + money(h.total) + '</small></span><button type="button" class="btn btn-ghost sm" data-reorder-hist="' + h.no + '">Order again</button></div>'; }).join('') : emptyHtml('No orders yet.');
     function addPn(pn, q) { var it = pool.concat(catalog()).filter(function (x) { return x.pn === pn; })[0]; if (!it) return; var line = S.cart.filter(function (c2) { return c2.pn === pn; })[0]; if (line) line.q += (q || it.q); else S.cart.push({ pn: it.pn, d: it.d, q: q || it.q, p: partPrice(it.p) }); }
-    qsa('[data-add-pn]').forEach(function (b) { b.addEventListener('click', function () { addPn(b.getAttribute('data-add-pn')); save(); renderPage(); }); });
+    qsa('[data-add-pn]').forEach(function (b) { b.addEventListener('click', function () { var pn = b.getAttribute('data-add-pn'), inp = b.parentNode.querySelector('[data-qty-for]'), q = inp ? Math.max(1, parseInt(inp.value, 10) || 1) : 0; addPn(pn, q); save(); renderPage(); }); });
     qsa('#sp-results .qty button, #sp-reorder .qty button').forEach(function (b) { b.addEventListener('click', function () { var l = S.cart.filter(function (c2) { return c2.pn === b.getAttribute('data-pn'); })[0]; if (!l) return; l.q += +b.getAttribute('data-q'); if (l.q <= 0) S.cart = S.cart.filter(function (c2) { return c2 !== l; }); save(); renderPage(); }); });
     once($('sp-reorder-all'), 'click', function () { S.reorder.forEach(function (r) { addPn(r.pn, r.q); }); save(); toast('Reorder list added, ' + cartCount() + ' items.'); renderPage(); });
     qsa('[data-reorder-hist]').forEach(function (b) { b.addEventListener('click', function () { var h = S.orderHistory.filter(function (x) { return x.no === b.getAttribute('data-reorder-hist'); })[0]; var src = S.orders.filter(function (o) { return o.no === h.no; })[0]; if (src) src.items.forEach(function (it) { addPn(it[0], it[2]) || (S.cart.filter(function (c2) { return c2.pn === it[0]; })[0] ? null : S.cart.push({ pn: it[0], d: it[1], q: it[2], p: it[3] })); }); else S.reorder.slice(0, Math.max(1, Math.min(h.items, S.reorder.length))).forEach(function (r) { addPn(r.pn, r.q); }); save(); toast('Order ' + h.no + ' added to your request.'); renderPage(); }); });
@@ -1683,23 +1683,61 @@
     qsa('[data-build-edit]').forEach(function (b) { b.addEventListener('click', function () { flowSaveBuild(S.builds.filter(function (x) { return x.id === b.getAttribute('data-build-edit'); })[0], b.closest('.row')); }); });
     qsa('[data-flow-build]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowSaveBuild(null); }); });
   }
+  var BUILD_OPTS = {
+    chassis: [['Freightliner M2 106', 'Cummins B6.7 280 hp · Allison 2500 RDS', 4], ['Freightliner M2 112', 'Detroit DD8 · Allison 3000 RDS', 6], ['International MV607', 'Cummins B6.7 · Allison 2500', 4], ['International HV607', 'Cummins L9 · Allison 3000', 6], ['Kenworth T380', 'PACCAR PX-7 · Allison 3000', 4], ['Ford F-750', '7.3L gas · 10-speed auto', 4], ['Ram 5500', '6.7L Cummins · Aisin 6-speed', 4]],
+    body: ['Aluminum line body, 11 ft', 'Steel line body, 11 ft', 'Fiberglass line body, 11 ft', 'Utility body, 10 ft', 'Service body, 11 ft', 'Reading body, 14 ft', 'Flatbed, 16 ft', 'Chipper dump, 12 ft'],
+    equipment: {
+      'Bucket truck': [['Altec AT40G', '45 ft · 350 lb · Category C'], ['Altec AA55', '55 ft · 400 lb · Category C'], ['Altec AM55', '60 ft · material handler · Category C'], ['Terex Hi-Ranger XT55', '55 ft · 400 lb · Category C'], ['Terex Optima TC55', '55 ft · 350 lb · Category C'], ['Versalift VST-52', '52 ft · Category C'], ['Dur-A-Lift DTAX-45', '45 ft']],
+      'Digger derrick': [['Altec DC47', '47 ft sheave · 23,000 lb'], ['Altec DM47', '47 ft · 20,000 lb'], ['Terex C4047', '47 ft · 20,000 lb'], ['Terex Commander 4047', '47 ft · 22,000 lb']],
+      'Crane service truck': [['IMT 7500', '7,500 lb · 30 ft'], ['Auto Crane 6406H', '6,000 lb'], ['Palfinger PK 18500', '18,500 lb knuckleboom'], ['Palfinger PK 23500', '23,500 lb knuckleboom'], ['National NBT30H', '30 ton · 110 ft']],
+      'Service truck': [['Auto Crane 6406H', '6,000 lb'], ['No crane', 'Compressor and tool circuits only']]
+    },
+    options: ['Hydraulic outriggers', 'Material handling jib', '3 kW inverter', 'Hydraulic tool circuit', '40 cfm compressor', 'LED work lights', 'Pole claws', 'Auger, 12 in', 'Backup camera', 'Telematics, CTOS device'],
+    colors: ['White', 'Fleet white with company decals', 'Safety yellow', 'Black', 'Custom']
+  };
+  function buildSpec(cfg) { return (cfg.year || '2026') + ' ' + cfg.chassis + ' · ' + cfg.equipment; }
+  function buildDetail(cfg) { var ch = BUILD_OPTS.chassis.filter(function (x) { return x[0] === cfg.chassis; })[0]; return [ch ? ch[1] : '', ch ? (ch[2] === 6 ? '6x4' : '4x2') : '', cfg.body, cfg.equipment + (cfg.equipSpec ? ', ' + cfg.equipSpec : '')].concat(cfg.options || []).concat([(cfg.color || 'White').toLowerCase()]).filter(Boolean).join(' · '); }
   function flowSaveBuild(seed, row) {
     var editing = !!(seed && seed.id);
     seed = seed || {};
+    var cfg = seed.config ? JSON.parse(JSON.stringify(seed.config)) : { kind: 'Bucket truck', chassis: 'Freightliner M2 106', body: 'Aluminum line body, 11 ft', equipment: 'Altec AA55', options: ['Hydraulic outriggers', '3 kW inverter'], color: 'White', year: '2026', notes: '' };
+    if (!seed.config && seed.spec) { var m = seed.spec.match(/^(\d{4}) (.+?) · (.+)$/); if (m) { cfg.year = m[1]; cfg.chassis = BUILD_OPTS.chassis.map(function (x) { return x[0]; }).filter(function (n) { return m[2].indexOf(n) >= 0 || n.indexOf(m[2]) >= 0; })[0] || cfg.chassis; Object.keys(BUILD_OPTS.equipment).forEach(function (k) { if (BUILD_OPTS.equipment[k].some(function (e) { return e[0] === m[3]; })) { cfg.kind = k; cfg.equipment = m[3]; } }); } if (seed.detail && !seed.config) cfg.notes = ''; }
+    function sel(id, opts, cur, label) { return '<label>' + label + '<select id="' + id + '">' + opts.map(function (o) { var v = typeof o === 'string' ? o : o[0], d = typeof o === 'string' ? '' : (o[1] ? ' · ' + o[1] : ''); return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(v + d) + '</option>'; }).join('') + '</select></label>'; }
+    function body() {
+      var eq = BUILD_OPTS.equipment[cfg.kind] || [];
+      if (!eq.some(function (e) { return e[0] === cfg.equipment; })) cfg.equipment = eq[0] ? eq[0][0] : '';
+      cfg.equipSpec = (eq.filter(function (e) { return e[0] === cfg.equipment; })[0] || [])[1] || '';
+      return '<form class="form" id="pb-form"><label>Name<input type="text" id="pb-name" required value="' + esc(seed.name || '') + '" placeholder="Standard 55 ft bucket"></label>' +
+        '<h4 class="dr-sub">Chassis</h4><div class="form-2">' + sel('pb-chassis', BUILD_OPTS.chassis, cfg.chassis, 'Make and model') + '<label>Model year<select id="pb-year">' + ['2026', '2027'].map(function (y) { return '<option' + (y === cfg.year ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div>' +
+        '<h4 class="dr-sub">Body and equipment</h4>' + sel('pb-kind', Object.keys(BUILD_OPTS.equipment), cfg.kind, 'Truck type') + '<div class="form-2">' + sel('pb-body', BUILD_OPTS.body, cfg.body, 'Body') + sel('pb-equip', eq, cfg.equipment, cfg.kind === 'Bucket truck' ? 'Aerial device' : cfg.kind === 'Digger derrick' ? 'Derrick' : 'Crane') + '</div>' +
+        '<h4 class="dr-sub">Options</h4><div class="pb-opts">' + BUILD_OPTS.options.map(function (o) { return '<label class="check"><input type="checkbox" value="' + esc(o) + '"' + ((cfg.options || []).indexOf(o) >= 0 ? ' checked' : '') + '><span>' + esc(o) + '</span></label>'; }).join('') + '</div>' +
+        '<div class="form-2">' + sel('pb-color', BUILD_OPTS.colors, cfg.color, 'Color') + '<label>Units built this way<input type="text" id="pb-units" value="' + esc((seed.units || []).join(', ')) + '" placeholder="1042, 1130"></label></div>' +
+        '<label>Notes for Sarah<textarea id="pb-notes" rows="2" placeholder="Anything the spec above does not capture">' + esc(cfg.notes || '') + '</textarea></label>' +
+        '<div class="pb-preview"><span>As it will read on the quote</span><strong id="pb-spec">' + esc(buildSpec(cfg)) + '</strong><small id="pb-detail">' + esc(buildDetail(cfg)) + '</small></div></form>';
+    }
+    function read() { cfg.chassis = $('pb-chassis').value; cfg.year = $('pb-year').value; cfg.kind = $('pb-kind').value; cfg.body = $('pb-body').value; cfg.equipment = $('pb-equip').value; cfg.options = qsa('.pb-opts input:checked').map(function (i) { return i.value; }); cfg.color = $('pb-color').value; cfg.notes = $('pb-notes').value; var eq = BUILD_OPTS.equipment[cfg.kind] || []; cfg.equipSpec = (eq.filter(function (e) { return e[0] === cfg.equipment; })[0] || [])[1] || ''; }
+    function paint() {
+      var nm = $('pb-name') ? $('pb-name').value : (seed.name || ''), un = $('pb-units') ? $('pb-units').value : null;
+      $('dr-body').innerHTML = body(); if (nm) $('pb-name').value = nm; if (un !== null) $('pb-units').value = un;
+      $('pb-kind').addEventListener('change', function () { read(); paint(); });
+      ['pb-chassis', 'pb-year', 'pb-body', 'pb-equip', 'pb-color'].forEach(function (id) { $(id).addEventListener('change', function () { read(); $('pb-spec').textContent = buildSpec(cfg); $('pb-detail').textContent = buildDetail(cfg); }); });
+      qsa('.pb-opts input').forEach(function (i) { i.addEventListener('change', function () { read(); $('pb-detail').textContent = buildDetail(cfg); }); });
+      $('pb-form').addEventListener('submit', function (e) {
+        e.preventDefault(); read();
+        var units = $('pb-units').value.split(/[,\s]+/).filter(Boolean), name = $('pb-name').value;
+        var detail = buildDetail(cfg) + (cfg.notes ? ' · ' + cfg.notes : '');
+        if (editing) { seed.name = name; seed.spec = buildSpec(cfg); seed.detail = detail; seed.units = units; seed.config = cfg; }
+        else S.builds.unshift({ id: 'b' + Date.now(), name: name, spec: buildSpec(cfg), detail: detail, units: units, last: seed.last || 'Not ordered yet', lastPrice: seed.lastPrice || 0, lead: seed.lead || 'Quoted', config: cfg });
+        save(); closeDrawer(); toast(editing ? 'Build updated.' : '"' + name + '" saved to preferred builds.'); renderPage();
+        if (!editing && document.body.getAttribute('data-page') === 'shop') location.hash = '#trucks';
+      });
+    }
     openDrawer({
-      kind: editing ? 'Edit preferred build' : 'Save a preferred build', title: editing ? seed.name : 'Name this configuration', meta: 'Reorder it any time in one step; Sarah quotes it from the saved spec',
-      body: '<form class="form" id="pb-form"><label>Name<input type="text" id="pb-name" required value="' + esc(seed.name || '') + '" placeholder="Standard 55 ft bucket"></label><label>Truck<input type="text" id="pb-spec" required value="' + esc(seed.spec || '') + '" placeholder="2026 Freightliner M2 106 · Altec AA55"></label><label>Spec and must-haves<textarea id="pb-detail" rows="4" placeholder="Chassis, body, aerial or crane, insulation category, color, options">' + esc(seed.detail || '') + '</textarea></label><label>Units in your fleet built this way<input type="text" id="pb-units" value="' + esc((seed.units || []).join(', ')) + '" placeholder="1042, 1130"></label></form>',
-      foot: '<button type="submit" form="pb-form" class="btn btn-primary">' + (editing ? 'Save changes' : 'Save build') + '</button>' + (editing ? '<button type="button" class="lnk" id="pb-del">Remove</button>' : ''),
+      kind: editing ? 'Edit preferred build' : 'Configure a build', title: editing ? seed.name : 'New preferred build', meta: 'Chassis, body, equipment and options. Saved builds reorder in one step; Sarah quotes from the exact spec.',
+      body: '', foot: '<button type="submit" form="pb-form" class="btn btn-primary">' + (editing ? 'Save changes' : 'Save build') + '</button>' + (editing ? '<button type="button" class="lnk" id="pb-del">Remove</button>' : ''),
       row: row,
       after: function () {
-        $('pb-form').addEventListener('submit', function (e) {
-          e.preventDefault();
-          var units = $('pb-units').value.split(/[,\s]+/).filter(Boolean);
-          if (editing) { seed.name = $('pb-name').value; seed.spec = $('pb-spec').value; seed.detail = $('pb-detail').value; seed.units = units; }
-          else S.builds.unshift({ id: 'b' + Date.now(), name: $('pb-name').value, spec: $('pb-spec').value, detail: $('pb-detail').value, units: units, last: seed.last || 'Not ordered yet', lastPrice: seed.lastPrice || 0, lead: seed.lead || 'Quoted' });
-          save(); closeDrawer(); toast(editing ? 'Build updated.' : '"' + $('pb-name').value + '" saved to preferred builds.'); renderPage();
-          if (!editing && document.body.getAttribute('data-page') === 'shop') location.hash = '#trucks';
-        });
+        paint();
         var del = $('pb-del'); if (del) del.addEventListener('click', function () { confirmInline($('dr-foot'), 'Remove "' + seed.name + '" from preferred builds?', 'Remove', function () { S.builds = S.builds.filter(function (b) { return b !== seed; }); save(); closeDrawer(); toast('Build removed.'); renderPage(); }); });
       }
     });
