@@ -1,6 +1,7 @@
 // CTOS One demo data. One dataset for every page; app.js renders from it.
 // Totals are computed in app.js from these rows, never typed in separately.
 window.CTOS_SEED = {
+  version: 2, // bump this whenever the seed data changes; saved demo state from older versions is discarded
   today: 'Tue, Oct 27',
   user: { name: 'Mike Brown', initials: 'MB', org: 'Shenandoah Line Services', fleetSize: 48 },
 

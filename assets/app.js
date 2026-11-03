@@ -556,7 +556,11 @@
   }
 
   /* ---------- state ---------- */
-  var KEY = 'ctos-one-demo-v1';
+  // Saved demo state is tied to the seed version. Bump SEED_VERSION in data.js whenever the seed changes
+  // and every browser quietly reloads from the new data.js instead of its old saved copy.
+  var SEED_VERSION = (window.CTOS_SEED && window.CTOS_SEED.version) || 1;
+  var KEY = 'ctos-one-demo-v' + SEED_VERSION;
+  try { Object.keys(localStorage).forEach(function (k) { if (/^ctos-one-demo-v/.test(k) && k !== KEY) localStorage.removeItem(k); }); } catch (e) {}
   var S;
   function load() {
     var who = ''; try { who = localStorage.getItem('ctos-persona') || ''; } catch (e) {}
