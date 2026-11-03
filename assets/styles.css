@@ -1805,3 +1805,28 @@ table.parts-cat .qty { gap: 6px; } table.parts-cat .qty button { width: 24px; he
 .drawer .form-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .drawer .form-2 label { min-width: 0; }
 .drawer .form select, .drawer .form input[type="text"], .drawer .form input[type="date"], .drawer .form input[type="search"], .drawer .form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+
+/* Quote line items (product + configured options, as in Salesforce) */
+.ql-items-wrap { padding: 0 0 6px; margin: 6px 0 4px; }
+table.ql-items { font-size: 0.8rem; }
+table.ql-items th { font-size: 0.7rem; padding: 6px 8px 6px 0; }
+table.ql-items td { padding: 7px 8px 7px 0; vertical-align: top; }
+table.ql-items td.mono { white-space: nowrap; font-size: 0.74rem; }
+table.ql-items td small { display: block; color: var(--muted); font-size: 0.7rem; margin-top: 1px; font-family: inherit; }
+table.ql-items td.pname { text-transform: none; }
+table.ql-items tr.opt td.pname { padding-left: 14px; position: relative; }
+table.ql-items tr.opt td.pname::before { content: "+"; position: absolute; left: 2px; color: var(--muted); }
+table.ql-items tr.pkg td { border-top: 1px solid var(--line-strong); font-weight: 500; }
+.drawer table.ql-items { min-width: 0; }
+.dr-facts.terms dd { overflow-wrap: anywhere; }
+.terms-h { display: flex; justify-content: space-between; align-items: baseline; }
+.terms-h .lnk { font-size: 0.8rem; font-weight: 400; }
+.ql-track.in-dr { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.ql-track.in-dr .trk { grid-row: auto; }
+.ql-track.in-dr .trk-name { font-size: 0.78rem; }
+.ql-track.in-dr .trk-when { font-size: 0.72rem; }
+.drawer .cr-steps li:not(.on) { font-size: 0; gap: 0; justify-content: center; }
+.drawer .cr-steps li:not(.on) span { font-size: 0.68rem; }
+.drawer .cr-steps li.on { flex: 2; }
+.row.fig span.ql-track.in-dr { display: flex; font-size: 0.78rem; }
+.row.fig span.ql-track.in-dr span.trk { display: inline-flex; }

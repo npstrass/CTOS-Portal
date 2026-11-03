@@ -171,9 +171,9 @@ window.CTOS_SEED = {
   ],
   shipTo: ['Shenandoah yard, Stafford', 'CTOS Richmond', 'CTOS Fredericksburg'],
   trucks: [
-    { no: 'T-2051', quote: 'Q-10301', ql: 'QL-01', spec: '2026 Freightliner M2 106 · Altec AA55', detail: 'Cummins B6.7 · Allison 2500 · 11 ft aluminum line body · AA55 aerial', price: 268400, ordered: 'Aug 14', eta: 'Dec 12', where: 'Altec, Burnsville NC', stage: 2,
+    { no: 'T-2051', quote: 'Q-10301', ql: 'QL-0138210', spec: '2026 Freightliner M2 106 · Altec AA55', detail: 'Cummins B6.7 · Allison 2500 · 11 ft aluminum line body · AA55 aerial', price: 268400, ordered: 'Aug 14', eta: 'Dec 12', where: 'CTOS upfit, Union Grove WI', stage: 2,
       stages: [['Ordered','Aug 14'],['In production','Oct 6'],['Built, in transit','Nov 24'],['Prep at CTOS','Dec 8'],['Delivery','Dec 12']] },
-    { no: 'T-2066', quote: 'Q-10388', ql: 'QL-01', spec: '2026 Kenworth T380 · Palfinger PK 23500', detail: 'PX-7 · Allison 3000 · 14 ft Reading body · PK 23500 knuckleboom', price: 214900, ordered: 'Sep 30', eta: 'Feb 2027', where: 'CTOS upfit, Kansas City', stage: 1,
+    { no: 'T-2066', quote: 'Q-10388', ql: 'QL-0139044', spec: '2026 Kenworth T380 · Palfinger PK 23500', detail: 'PX-7 · Allison 3000 · 14 ft Reading body · PK 23500 knuckleboom', price: 214900, ordered: 'Sep 30', eta: 'Feb 2027', where: 'CTOS upfit, Kansas City', stage: 1,
       stages: [['Ordered','Sep 30'],['In production','Scheduled Dec'],['Built, in transit',''],['Prep at CTOS',''],['Delivery','Feb 2027']] }
   ],
   rentals: [
@@ -336,7 +336,7 @@ window.CTOS_SEED = {
   },
   freight: [
     { id: 'F-3310', unit: '1122', what: 'Reposition', from: 'Richmond yard', to: 'Harrisonburg job site', date: 'Oct 29', miles: 118, stage: 'quoted', amount: 640, note: 'Lowboy, permit not required at 66,000 GVWR.' },
-    { id: 'F-3298', unit: 'T-2051', what: 'Delivery', from: 'Altec, Burnsville NC', to: 'Shenandoah yard, Stafford', date: 'Dec 12', miles: 410, stage: 'booked', amount: 1850, note: 'Included in the truck order; driven delivery with temp tags.' },
+    { id: 'F-3298', unit: 'T-2051', what: 'Delivery', from: 'CTOS Union Grove, WI', to: 'Shenandoah yard, Stafford', date: 'Dec 12', miles: 820, stage: 'booked', amount: 2650, note: 'Included in the truck order; driven delivery with temp tags.' },
     { id: 'F-3271', unit: '1081', what: 'Reposition', from: 'Shenandoah yard, Stafford', to: 'Richmond yard', date: 'Oct 6', miles: 62, stage: 'completed', amount: 420, note: '' }
   ],
 
@@ -409,19 +409,28 @@ window.CTOS_SEED = {
   // Salesforce Quotes. Each Quote Line is one truck configuration; an accepted line becomes a truck order.
   quotes: [
     { no: 'Q-10422', sfId: '0Q0Hs00000A7kQ2', stage: 'ready', requested: 'Oct 20', updated: 'Oct 26', owner: 'Sarah Mitchell', validUntil: 'Nov 20', note: 'Includes the fleet discount and delivery to Stafford. Both lines must be accepted together for the discount.',
+      terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'CTOS Capital · 60 months', lienholder: 'CTOS Capital, Kansas City MO', deliverTo: 'Shenandoah yard, 1180 Garrisonville Rd, Stafford, VA 22554', po: '', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
       lines: [
-        { ql: 'QL-01', spec: '2026 Freightliner M2 106 · Altec AT40G', detail: 'B6.7 · Allison 2500 · 11 ft line body · AT40G 45 ft · white', qty: 2, unitPrice: 246300, eta: 'Mar 2027' },
-        { ql: 'QL-02', spec: '2026 Ford F-750 · Versalift VST-52', detail: '7.3L gas · 11 ft fiberglass body · VST-52 · white', qty: 1, unitPrice: 189800, eta: 'Feb 2027' }
+        { ql: 'QL-0140628', spec: '2026 Freightliner M2 106 · Altec AT40G', detail: 'B6.7 · Allison 2500 · 11 ft line body · AT40G 45 ft · white', qty: 2, unitPrice: 246300, eta: 'Mar 2027',
+          items: [['100_04871', 'TM788102', '2026 FREIGHTLINER M2 106 4X2 with ALTEC AT40G 45FT and 11FT LINE BODY', 'Quoted', 257085, 6, 0, 0], ['501_01013', '', '4 CORNER STROBES (2 IN THE GRILL / 2 AT THE REAR)', '', 1500, 0, 0, 0], ['501_01052', '', 'BACK UP CAMERA KIT', '', 1250, 0, 0, 0], ['501_02210', '', '3KW INVERTER with CAB OUTLETS', '', 1890, 0, 0, 0]] },
+        { ql: 'QL-0140629', spec: '2026 Ford F-750 · Versalift VST-52', detail: '7.3L gas · 11 ft fiberglass body · VST-52 · white', qty: 1, unitPrice: 189800, eta: 'Feb 2027',
+          items: [['100_05118', 'TM788440', '2026 FORD F-750 4X2 with VERSALIFT VST-52 and 11FT FIBERGLASS BODY', 'Quoted', 197830, 6, 0, 0], ['501_01013', '', '4 CORNER STROBES (2 IN THE GRILL / 2 AT THE REAR)', '', 1500, 0, 0, 0], ['501_03305', '', 'HYDRAULIC TOOL CIRCUIT at PLATFORM', '', 2340, 0, 0, 0]] }
       ] },
     { no: 'Q-10419', sfId: '0Q0Hs00000A7hR9', stage: 'review', requested: 'Oct 24', updated: 'Oct 27', owner: 'Sarah Mitchell', validUntil: '', note: 'Sarah is confirming availability at the Richmond lot.',
-      lines: [ { ql: 'QL-01', spec: '2023 International MV · Terex XT60, used', detail: '41k mi · 1,100 boom hrs · certified, fresh dielectric', qty: 1, unitPrice: 0, eta: 'In stock, Richmond' } ] },
-    { no: 'Q-10388', sfId: '0Q0Hs00000A6zL4', stage: 'accepted', requested: 'Sep 22', updated: 'Sep 30', owner: 'Sarah Mitchell', validUntil: '', note: 'Accepted Sep 30. Line 1 became order T-2066.',
-      lines: [ { ql: 'QL-01', spec: '2026 Kenworth T380 · Palfinger PK 23500', detail: 'PX-7 · Allison 3000 · 14 ft Reading body', qty: 1, unitPrice: 214900, eta: 'Feb 2027', orderNo: 'T-2066' } ] },
-    { no: 'Q-10301', sfId: '0Q0Hs00000A5mB8', stage: 'accepted', requested: 'Jul 29', updated: 'Aug 14', owner: 'Sarah Mitchell', validUntil: '', note: 'Accepted Aug 14. Line 1 became order T-2051.',
-      lines: [ { ql: 'QL-01', spec: '2026 Freightliner M2 106 · Altec AA55', detail: 'Cummins B6.7 · Allison 2500 · 11 ft aluminum line body · AA55 aerial', qty: 1, unitPrice: 268400, eta: 'Dec 12', orderNo: 'T-2051' } ] }
+      terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'Cash · Net 30 on account', lienholder: '', deliverTo: 'Pick up at CTOS Richmond', po: '', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
+      lines: [ { ql: 'QL-0140702', spec: '2023 International MV · Terex XT60, used', detail: '41k mi · 1,100 boom hrs · certified, fresh dielectric', qty: 1, unitPrice: 0, eta: 'In stock, Richmond',
+          items: [['200_00917', 'TM761155', '2023 INTERNATIONAL MV607 4X2 with TEREX HI-RANGER XT60, CERTIFIED USED', 'In review', 0, 0, 0, 0]] } ] },
+    { no: 'Q-10388', sfId: '0Q0Hs00000A6zL4', stage: 'accepted', requested: 'Sep 22', updated: 'Sep 30', owner: 'Sarah Mitchell', validUntil: '', note: 'Accepted Sep 30. QL-0139044 became order T-2066.',
+      terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'Atlantic Union Bank · 48 months', lienholder: 'Atlantic Union Bank, Richmond VA', deliverTo: 'Shenandoah yard, 1180 Garrisonville Rd, Stafford, VA 22554', po: 'SLS-2026-0918', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
+      lines: [ { ql: 'QL-0139044', spec: '2026 Kenworth T380 · Palfinger PK 23500', detail: 'PX-7 · Allison 3000 · 14 ft Reading body', qty: 1, unitPrice: 214900, eta: 'Feb 2027', orderNo: 'T-2066',
+          items: [['100_04402', 'TM786230', '2026 KENWORTH T380 4X2 with PALFINGER PK 23500 and 14FT READING BODY', 'Ordered', 225217, 6, 0, 0], ['501_01052', '', 'BACK UP CAMERA KIT', '', 1250, 0, 0, 0], ['501_04120', '', 'RADIO REMOTE, SECOND TRANSMITTER', '', 1946, 0, 0, 0]] } ] },
+    { no: 'Q-10301', sfId: '0Q0Hs00000A5mB8', stage: 'accepted', requested: 'Jul 29', updated: 'Aug 14', owner: 'Sarah Mitchell', validUntil: '', note: 'Accepted Aug 14. QL-0138210 became order T-2051.',
+      terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'CTOS Capital · 60 months', lienholder: 'CTOS Capital, Kansas City MO', deliverTo: 'Shenandoah yard, 1180 Garrisonville Rd, Stafford, VA 22554', po: 'SLS-2026-0731', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
+      lines: [ { ql: 'QL-0138210', spec: '2026 Freightliner M2 106 · Altec AA55', detail: 'Cummins B6.7 · Allison 2500 · 11 ft aluminum line body · AA55 aerial', qty: 1, unitPrice: 268400, eta: 'Dec 12', orderNo: 'T-2051',
+          items: [['100_04890', 'TM787011', '2026 FREIGHTLINER M2 106 4X2 with ALTEC AA55 55FT and 11FT ALUMINUM LINE BODY', 'Ordered', 280794, 6, 0, 0], ['501_01013', '', '4 CORNER STROBES (2 IN THE GRILL / 2 AT THE REAR)', '', 1500, 0, 0, 0], ['501_02210', '', '3KW INVERTER with CAB OUTLETS', '', 1890, 0, 0, 0], ['501_05510', '', 'HYDRAULIC OUTRIGGERS, A-FRAME', '', 1064, 0, 0, 0]] } ] }
   ],
   accountNotes: [
-    { when: 'Oct 26', who: 'Sarah Mitchell', text: 'Mike wants both AA55s before storm season; pushing Altec on the T-2051 build slot.' },
+    { when: 'Oct 26', who: 'Sarah Mitchell', text: 'Mike wants both AA55s before storm season; pushing Union Grove on the T-2051 build slot.' },
     { when: 'Oct 22', who: 'Priya Nair', text: '#1104 alternator was a warranty gray area; we covered labor as goodwill. IMT crane is out of warranty, flagged for the hoist cable.' }
   ],
   // CTOS stock available to this account: sales (new and used) and the rental fleet.
