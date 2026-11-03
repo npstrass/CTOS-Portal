@@ -1641,3 +1641,110 @@ label.up-btn:hover { border-color: var(--ink); }
 .rent-opts { margin: 0 0 12px; padding: 0 14px; }
 .tray-form .form-2 select, .tray-form .form-2 input { width: 100%; min-width: 0; }
 .tray-form .form-2 label { min-width: 0; }
+
+/* ---------- Shop parts table ---------- */
+table.parts-cat th:nth-child(2) { width: 14%; }
+table.parts-cat td.for { width: auto; }
+table.parts-cat td.fits { color: var(--muted); font-size: 0.82rem; }
+table.parts-cat td.mono { font-size: 0.8rem; }
+table.parts-cat td.act-col { width: 128px; }
+table.parts-cat tr.group th { text-align: left; padding: 16px 0 6px; font-size: 0.74rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border-bottom: 1px solid var(--line); }
+table.parts-cat tr.picked td { background: var(--mist); }
+table.parts-cat .qty { justify-content: flex-end; }
+
+/* ---------- Preferred builds in a sidebar ---------- */
+.inv-side .row.build { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px 14px; }
+.inv-side .row.build .build-detail { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.inv-side .row.build .when { text-align: left; display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.8rem; }
+.inv-side .row.build .when strong { font-weight: 500; }
+.inv-side .row.build .when strong::after { content: " ·"; color: var(--muted); }
+.inv-side .row.build .act { margin-top: 4px; }
+
+/* ---------- Inventory list view ---------- */
+.inv-list { display: flex; flex-direction: column; padding: 4px 22px 6px; }
+.inv-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 170px 130px auto; gap: 16px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.inv-row:last-child { border-bottom: 0; }
+.inv-row.picked { background: var(--mist); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+.inv-thumb { position: relative; display: block; width: 96px; aspect-ratio: 16 / 10; padding: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #F2F3F5; cursor: pointer; }
+.inv-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.inv-thumb img.ph { object-fit: contain; }
+.inv-thumb .inv-nphotos { right: 4px; bottom: 4px; padding: 0 5px; font-size: 0.66rem; }
+.inv-main-c { min-width: 0; }
+.inv-t { display: block; text-align: left; font: inherit; font-weight: 600; font-size: 0.95rem; color: var(--ink); line-height: 1.3; }
+.inv-sub { font-size: 0.8rem; color: var(--ink-soft); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-sub.muted { color: var(--muted); }
+.inv-loc strong { display: block; font-size: 0.84rem; font-weight: 500; }
+.inv-loc span { display: block; font-size: 0.76rem; color: var(--muted); }
+.inv-loc em { font-style: normal; }
+.inv-p { text-align: right; }
+.inv-p strong { display: block; font-weight: 500; font-size: 0.98rem; letter-spacing: -0.01em; }
+.inv-p s, .inv-p span { display: block; font-size: 0.74rem; color: var(--muted); }
+.inv-a { text-align: right; }
+.inv-a .btn { white-space: nowrap; }
+.seg-view { margin-right: 14px; vertical-align: middle; }
+.seg-view button { padding: 4px 8px; display: inline-flex; }
+.seg-view svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 1240px) { .inv-row { grid-template-columns: 80px minmax(0, 1fr) 130px auto; } .inv-loc { display: none; } .inv-thumb { width: 80px; } }
+@media (max-width: 900px) {
+  .inv-list { padding: 4px 14px 6px; }
+  .inv-row { grid-template-columns: 72px minmax(0, 1fr); grid-template-areas: "thumb main" "price act"; gap: 8px 12px; }
+  .inv-thumb { grid-area: thumb; width: 72px; }
+  .inv-main-c { grid-area: main; }
+  .inv-p { grid-area: price; text-align: left; }
+  .inv-p s, .inv-p span { display: inline; margin-left: 6px; }
+  .inv-a { grid-area: act; }
+  .inv-sub { white-space: normal; }
+  .seg-view { margin-right: 8px; }
+}
+
+/* ---------- Truck quotes with per-line build tracker ---------- */
+.quotes { padding: 0 22px 8px; }
+.quote { border-bottom: 1px solid var(--line); padding: 14px 0 6px; }
+.quote:last-child { border-bottom: 0; }
+.q-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.q-no { font-weight: 600; font-size: 0.98rem; color: var(--ink); font-family: var(--mono, ui-monospace, monospace); }
+.q-meta { display: block; margin-top: 2px; font-size: 0.8rem; color: var(--muted); }
+.q-side { display: flex; align-items: center; gap: 14px; flex: none; }
+.q-side b { font-weight: 500; font-size: 1rem; min-width: 90px; text-align: right; }
+.quote.due .q-no { color: var(--red); }
+.q-lines { margin-top: 8px; }
+.ql { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: center; padding: 10px 0 10px 14px; border-left: 2px solid var(--line); margin: 0 0 6px; }
+.ql-main strong { display: block; font-weight: 500; font-size: 0.9rem; }
+.ql-main strong .row-btn { font: inherit; font-weight: 600; }
+.ql-main span { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.ql-track { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; gap: 0 10px; align-items: center; }
+.trk { display: inline-flex; align-items: center; gap: 0; grid-row: 1 / 3; }
+.trk i { display: block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--paper); position: relative; margin-right: 9px; }
+.trk i::after { content: ""; position: absolute; left: 9px; top: 50%; width: 9px; height: 1.5px; background: var(--line); transform: translateY(-50%); }
+.trk i:last-child { margin-right: 0; } .trk i:last-child::after { display: none; }
+.trk i.done { background: var(--ok); border-color: var(--ok); } .trk i.done::after { background: var(--ok); }
+.trk i.now { background: var(--paper); border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 5px var(--ink); }
+.trk.dead i { border-color: var(--line); }
+.trk-name { font-weight: 500; font-size: 0.84rem; line-height: 1.2; }
+.trk-when { font-size: 0.74rem; color: var(--muted); }
+.ql-track.in-dr { margin-top: 6px; }
+.drawer .ql-track .trk i { width: 8px; height: 8px; margin-right: 7px; } .drawer .ql-track .trk i::after { left: 8px; width: 7px; }
+@media (max-width: 900px) {
+  .quotes { padding: 0 14px 8px; }
+  .q-head { flex-direction: column; gap: 8px; }
+  .q-side { width: 100%; justify-content: space-between; }
+  .ql { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-left: 10px; }
+}
+@media (max-width: 900px) { .inv-main .section-head .head-note { display: flex; align-items: center; } .inv-main .section-head { flex-wrap: wrap; } }
+.ql-main strong .row-btn { display: inline; }
+table.parts-cat th:nth-child(1) { width: 34%; }
+table.parts-cat th:nth-child(2) { width: 13%; }
+table.parts-cat th:nth-child(3) { width: 21%; }
+table.parts-cat th:nth-child(4), table.parts-cat th:nth-child(5) { width: 11%; }
+.inv-row { grid-template-columns: 84px minmax(0, 1fr) 150px 112px auto; gap: 14px; }
+.inv-thumb { width: 84px; }
+.inv-t { font-size: 0.92rem; }
+.inv-a .btn.sm { padding: 0 10px; }
+@media (max-width: 1500px) { .inv-row { grid-template-columns: 84px minmax(0, 1fr) 112px auto; } .inv-loc { display: none; } .inv-sub.muted::after { content: ""; } }
+@media (max-width: 1500px) { .inv-row .inv-main-c .inv-sub.loc-inline { display: block; } }
+.loc-inline { display: none; font-size: 0.78rem; }
+.loc-inline em { font-style: normal; }
+@media (max-width: 1500px) { .loc-inline { display: block; } }
+table.parts-cat td.act-col, table.parts-cat th.act-col { width: 150px; }
+table.parts-cat .qty { gap: 6px; } table.parts-cat .qty button { width: 24px; height: 24px; }
+.inv-side .row.build .when span { display: inline; }
