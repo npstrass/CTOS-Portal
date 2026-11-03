@@ -1926,3 +1926,5 @@ table.ql-items { width: 100%; }
   .st-big { font-size: 1.8rem; }
   #st-head h1 { font-size: 1.5rem; }
 }
+  .post-body h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; margin: 34px 0 -6px; }
+  .post-body h2 + p { margin-top: 12px; }

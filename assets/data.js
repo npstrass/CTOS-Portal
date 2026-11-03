@@ -1,7 +1,7 @@
 // CTOS One demo data. One dataset for every page; app.js renders from it.
 // Totals are computed in app.js from these rows, never typed in separately.
 window.CTOS_SEED = {
-  version: 3, // bump this whenever the seed data changes; saved demo state from older versions is discarded
+  version: 4, // bump this whenever the seed data changes; saved demo state from older versions is discarded
   today: 'Tue, Oct 27',
   user: { name: 'Mike Brown', initials: 'MB', org: 'Shenandoah Line Services', fleetSize: 48 },
 
@@ -365,6 +365,26 @@ window.CTOS_SEED = {
     { t: '11:20 PM', unit: '1130', text: 'After-hours ignition at Shenandoah yard, 4 min, no movement', kind: 'fault' }
   ],
   posts: [
+    { id: 'sourcewell', date: 'Oct 29, 2026', title: 'Custom Truck One Source awarded Sourcewell cooperative contract', author: 'Zach Strasser, Custom Truck One Source', read: '5 min', img: 'https://www.customtruck.com/wp-content/uploads/2026/06/Bucket-Trucks-vs.-Digger-Derrick-Trucks-1024x576.png', tag: 'Company news', source: 'https://www.customtruck.com/blog/sourcewell-cooperative-contract/',
+      summary: 'Under contract 091125-CUK, eligible government, education and nonprofit agencies can buy aerial lifts, digger derricks, trailers and other equipment from CTOS without running their own RFP.',
+      pull: 'The solicitation is already done. The agency places its order on contract terms and keeps control of its own compliance.',
+      cta: 'Request a Sourcewell quote', ctaFlow: 'quote', takeawaysTitle: 'How to buy through Sourcewell', ctaLink: 'Read the full article on customtruck.com',
+      takeaways: ['Confirm your agency is eligible (state or local government, U.S. military, education or nonprofit, in the U.S. or Canada)', 'Register with Sourcewell online or at 877-585-9706; there is no fee', 'Review contract 091125-CUK on sourcewell-mn.gov', 'Request a quote from CTOS and cite 091125-CUK', 'Check that your procurement office accepts cooperative purchasing', 'Issue a purchase order that carries the contract number'],
+      body: [
+        'Custom Truck One Source has been awarded a Sourcewell cooperative purchasing contract, number 091125-CUK, running through April 9, 2030. For public agencies it means the competitive solicitation has already been done: eligible government, education and nonprofit buyers can purchase aerial lifts, digger derricks, trailers and related equipment from CTOS at the contract terms and pricing, without issuing their own RFP.',
+        { h: 'What is Sourcewell?' },
+        'Sourcewell is a self-funded government organization founded in 1978 that serves more than 50,000 agencies across the United States and Canada. It runs competitive solicitations on behalf of its members, awards contracts to the vendors that come out ahead, and publishes the award records publicly so a council or an auditor can see exactly how the vendor was selected.',
+        { h: 'How cooperative purchasing works' },
+        'Sourcewell runs the competitive solicitation once, publishes the award, and every registered agency can buy on those terms. The buying agency places its order directly with the awarded vendor at the negotiated pricing. The agency still owns compliance with its own laws and funding rules, but the months of drafting, advertising and evaluating a solicitation are already done.',
+        { h: 'Who can buy' },
+        'Any state or local government, U.S. military unit, educational institution or nonprofit organization in the U.S. or Canada can participate. There is no fee to join Sourcewell, no purchase obligation and no commitment; an agency simply needs to register before it buys.',
+        { h: 'What the contract covers' },
+        'The award covers aerial equipment (lifts, bucket trucks and platforms of many types), digger derricks and tracked diggers, hi-rail equipment with rail gear quoted as an add-on, line construction and transmission tools such as pullers, tensioners, blocks, phase lifters and hot arms, telecom cable placers and underground equipment, pole, reel, utility and cargo trailers, tool kits and hand tools, financing including municipal, operating and TRAC leases plus auction services, and the service, parts and training that keep the equipment working.',
+        { h: 'Why it makes sense for municipal buyers' },
+        'Cooperative purchasing shortens procurement timelines, gives councils and auditors a public record of how the vendor was chosen, and evaluates vendors on value, quality and service rather than price alone. Because Custom Truck offers sales, rental, parts, service, financing and asset disposal under one roof, an agency can run the whole lifecycle of a unit with a single vendor on a single contract.',
+        { h: 'How to buy from Custom Truck through Sourcewell' },
+        'The steps are short, and most agencies finish them in a week. Confirm eligibility, register with Sourcewell, review the contract, ask CTOS for a quote that cites 091125-CUK, confirm your procurement office accepts cooperative purchasing, and issue a purchase order with the contract number on it. Your CTOS account manager can walk through it with you and will reference the contract on every quote.'
+      ] },
     { id: 'storm-season', date: 'Oct 18, 2026', title: 'Preparing your aerial fleet for storm season', author: 'Luis Ortega, Service Advisor', read: '4 min', img: 'https://images.unsplash.com/photo-1734903251828-b8d4c0423e56?w=1200&q=70&auto=format&fit=crop', tag: 'Service',
       summary: 'Storm work is the most hours your booms will see all year. Here is what we check on every unit before November, and what you can do at the yard this week.',
       pull: 'A cable with one broken strand passes a casual look and fails under a loaded platform in sleet.',

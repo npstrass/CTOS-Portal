@@ -260,6 +260,30 @@
     addNotification({ title: 'Invoice ' + no + ' issued for ' + q.no, text: money(total) + ' before tax and title. Pay from Billing, or finance it.', href: 'billing.html' });
     closeDrawer(); toast('Invoice ' + no + ' requested. It is on Billing.'); renderPage();
   }
+  function flowRequestQuote(stock) {
+    var stocks = Array.isArray(stock) ? stock : (stock ? [stock] : []);
+    var n = Math.max(1, stocks.length);
+    function lineHtml(i, it) { var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : ''; return '<fieldset class="qline" data-line="' + i + '"' + (it ? ' data-stock="' + it.stock + '"' : '') + '><legend>Line ' + i + (it ? ' · stock ' + it.stock + ', ' + esc(it.loc) : '') + '</legend><div class="form-2"><label>New or used<select class="rq-cond">' + ['New', 'Used', 'Either'].map(function (o) { return '<option' + (o === cond ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label><label>Quantity<input type="text" class="rq-qty" inputmode="numeric" value="1"></label></div><label>Truck<input type="text" class="rq-subject" required placeholder="2026 Freightliner M2 106 · Altec AA55" value="' + (it ? esc(invTitle(it)) : '') + '"></label><label>Spec and must-haves<textarea class="rq-detail" rows="2" placeholder="Chassis, body, aerial or crane, insulation category, color">' + (it ? esc(it.chassis + ' · ' + it.spec) : '') + '</textarea></label></fieldset>'; }
+    openDrawer({
+      kind: 'Request a quote', title: 'Tell Sarah what you need', meta: 'Creates a Salesforce quote with one line per truck configuration',
+      body: '<form class="form" id="rq-form"><div id="rq-lines">' + (stocks.length ? stocks.map(function (it, i) { return lineHtml(i + 1, it); }).join('') : lineHtml(1)) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
+      foot: '<button type="submit" form="rq-form" class="btn btn-primary">Send request</button><a href="team.html" class="lnk">Call Sarah instead</a>',
+      after: function () {
+        $('rq-add').addEventListener('click', function () { n += 1; var w = document.createElement('div'); w.innerHTML = lineHtml(n); $('rq-lines').appendChild(w.children ? w.children[0] : w); });
+        $('rq-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var lines = qsa('.qline').map(function (f, i) { return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, '') + (f.getAttribute('data-stock') ? ' · stock ' + f.getAttribute('data-stock') : ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
+          if (!lines.length) return;
+          var no = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
+          S.quotes.unshift({ no: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: lines, note: ($('rq-by').value ? 'Needed by ' + $('rq-by').value + '. ' : '') + ($('rq-trade').value ? 'Trade-in: ' + $('rq-trade').value + '.' : '') });
+          S.salesforce.lastSync = 'Just now'; save();
+          addNotification({ title: no + ' sent to Sarah', text: lines.length + ' line' + (lines.length > 1 ? 's' : '') + ', ' + quoteUnits(S.quotes[0]) + ' truck' + (quoteUnits(S.quotes[0]) > 1 ? 's' : '') + '. She usually replies within a business day.', href: 'parts.html#trucks' });
+          closeDrawer(); toast('Request ' + no + ' sent to Sarah.'); renderPage();
+          setTimeout(function () { location.href = 'quote.html?q=' + no; }, 900);
+        });
+      }
+    });
+  }
   var TRUCK_STAGES = ['Requested', 'Quoted', 'Buyer\u2019s order', 'Signed', 'In production', 'Built, in transit', 'Prep at CTOS', 'Delivered'];
   function lineTrucks(q, l) { return S.trucks.filter(function (t) { return t.quote === q.no && t.ql === l.ql; }); }
   function lineStage(q, l, t) {
@@ -1395,13 +1419,13 @@
       var p = S.posts.filter(function (x) { return x.id === id; })[0]; if (!p) { index(); return; }
       document.title = p.title + ' — CTOS One';
       $('news-head').innerHTML = '<div><a href="#" class="lnk back">All news</a></div>';
-      var body = p.body.map(function (t, i) { return '<p>' + esc(t) + '</p>' + (i === 1 && p.pull ? '<blockquote class="pull">' + esc(p.pull) + '</blockquote>' : ''); }).join('');
+      var nPara = 0; var body = p.body.map(function (t) { if (t && t.h) return '<h2>' + esc(t.h) + '</h2>'; nPara += 1; return '<p>' + esc(t) + '</p>' + (nPara === 2 && p.pull ? '<blockquote class="pull">' + esc(p.pull) + '</blockquote>' : ''); }).join('');
       $('news-body').innerHTML = '<article class="post"><header class="post-head"><span class="post-tag">' + esc(p.tag) + '</span><h1>' + esc(p.title) + '</h1><p class="post-lead">' + esc(p.summary) + '</p><p class="post-meta">' + esc(p.author) + ' · ' + p.date + ' · ' + p.read + ' read</p></header>' +
         '<figure class="post-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.parentNode.style.display=\'none\'"></figure>' +
-        '<div class="post-body">' + body + (p.takeaways ? '<aside class="takeaways"><h3>What to do this week</h3><ol>' + p.takeaways.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></aside>' : '') + '</div>' +
-        '<footer class="post-foot"><button type="button" class="btn btn-primary" data-flow-schedule>' + esc(p.cta || 'Schedule service') + '</button><a href="team.html" class="lnk">Talk to ' + esc(p.author.split(',')[0]) + '</a></footer></article>' +
+        '<div class="post-body">' + body + (p.takeaways ? '<aside class="takeaways"><h3>' + esc(p.takeawaysTitle || 'What to do this week') + '</h3><ol>' + p.takeaways.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></aside>' : '') + '</div>' +
+        '<footer class="post-foot"><button type="button" class="btn btn-primary" data-flow-schedule>' + esc(p.cta || 'Schedule service') + '</button>' + (p.source ? '<a href="' + esc(p.source) + '" class="lnk" target="_blank" rel="noopener">' + esc(p.ctaLink || 'Read on customtruck.com') + '</a>' : '<a href="team.html" class="lnk">Talk to ' + esc(p.author.split(',')[0]) + '</a>') + '</footer></article>' +
         '<section class="post-more"><div class="section-head"><h3>More from the shop</h3></div><div class="post-grid">' + S.posts.filter(function (x) { return x.id !== p.id; }).map(function (x) { return card(x, false); }).join('') + '</div></section>';
-      qsa('[data-flow-schedule]', $('news-body')).forEach(function (b) { b.addEventListener('click', function () { flowSchedule({ job: p.id === 'storm-season' ? 'Storm readiness check' : '' }); }); });
+      qsa('[data-flow-schedule]', $('news-body')).forEach(function (b) { b.addEventListener('click', function () { if (p.ctaFlow === 'quote') flowRequestQuote(); else flowSchedule({ job: p.id === 'storm-season' ? 'Storm readiness check' : '' }); }); });
     }
     function route() { var h = (location.hash || '').slice(1); if (h) article(h); else index(); if (window.scrollTo) window.scrollTo(0, 0); }
     route(); once(window, 'hashchange', route);
