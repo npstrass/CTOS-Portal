@@ -1748,3 +1748,60 @@ table.parts-cat th:nth-child(4), table.parts-cat th:nth-child(5) { width: 11%; }
 table.parts-cat td.act-col, table.parts-cat th.act-col { width: 150px; }
 table.parts-cat .qty { gap: 6px; } table.parts-cat .qty button { width: 24px; height: 24px; }
 .inv-side .row.build .when span { display: inline; }
+
+/* Fixed-width columns so unavailable rows line up */
+.inv-row { grid-template-columns: 84px minmax(0, 1fr) 150px 112px 118px; }
+.inv-a .btn { width: 100%; justify-content: center; }
+@media (max-width: 1500px) { .inv-row { grid-template-columns: 84px minmax(0, 1fr) 112px 118px; } }
+@media (max-width: 900px) { .inv-row { grid-template-columns: 72px minmax(0, 1fr); } .inv-a .btn { width: auto; } }
+
+/* Parts: quantity before Add */
+.addq { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.addq input { width: 44px; height: 30px; text-align: center; font: inherit; font-size: 0.84rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
+.addq .btn.sm { padding: 0 10px; }
+
+/* Sidebar lists align with their headings */
+.inv-side .list { padding: 0 8px 8px; }
+.inv-side .list .row.fig.li { padding-left: 14px; padding-right: 14px; }
+.inv-side .list .row.fig.li + .row.fig.li::before { left: 14px; right: 14px; }
+.inv-side .row.build { padding-left: 14px; padding-right: 14px; }
+
+/* Build configurator */
+.pb-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 12px; }
+.pb-opts .check { font-size: 0.86rem; }
+.pb-preview { margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--mist); }
+.pb-preview span { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px; }
+.pb-preview strong { display: block; font-weight: 600; font-size: 0.95rem; }
+.pb-preview small { display: block; margin-top: 3px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.45; }
+.drawer .form .dr-sub { margin: 8px 0 0; }
+@media (max-width: 900px) { .pb-opts { grid-template-columns: 1fr; } }
+
+/* Fixed-width columns so unavailable rows line up */
+.inv-row { grid-template-columns: 84px minmax(0, 1fr) 150px 112px 118px; }
+.inv-a .btn { width: 100%; justify-content: center; }
+@media (max-width: 1500px) { .inv-row { grid-template-columns: 84px minmax(0, 1fr) 112px 118px; } }
+@media (max-width: 900px) { .inv-row { grid-template-columns: 72px minmax(0, 1fr); } .inv-a .btn { width: auto; } }
+
+/* Parts: quantity before Add */
+.addq { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.addq input { width: 44px; height: 30px; text-align: center; font: inherit; font-size: 0.84rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
+.addq .btn.sm { padding: 0 10px; }
+
+/* Sidebar lists align with their headings */
+.inv-side .list { padding: 0 8px 8px; }
+.inv-side .list .row.fig.li { padding-left: 14px; padding-right: 14px; }
+.inv-side .list .row.fig.li + .row.fig.li::before { left: 14px; right: 14px; }
+.inv-side .row.build { padding-left: 14px; padding-right: 14px; }
+
+/* Build configurator */
+.pb-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 12px; }
+.pb-opts .check { font-size: 0.86rem; }
+.pb-preview { margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--mist); }
+.pb-preview span { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px; }
+.pb-preview strong { display: block; font-weight: 600; font-size: 0.95rem; }
+.pb-preview small { display: block; margin-top: 3px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.45; }
+.drawer .form .dr-sub { margin: 8px 0 0; }
+@media (max-width: 900px) { .pb-opts { grid-template-columns: 1fr; } }
+.drawer .form-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.drawer .form-2 label { min-width: 0; }
+.drawer .form select, .drawer .form input[type="text"], .drawer .form input[type="date"], .drawer .form input[type="search"], .drawer .form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
