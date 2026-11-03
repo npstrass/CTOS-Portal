@@ -1407,6 +1407,11 @@
   };
 
   renderers.news = function () {
+    function authorHtml(p) {
+      var name = p.author.split(',')[0], role = p.author.split(',').slice(1).join(',').trim(), ini = name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+      var photo = p.authorPhoto || ('assets/img/authors/' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '.jpg');
+      return '<span class="author"><span class="author-pic"><img src="' + esc(photo) + '" alt="" onerror="this.remove()"><b aria-hidden="true">' + esc(ini) + '</b></span><span class="author-t"><strong>' + esc(name) + '</strong>' + (role ? '<small>' + esc(role) + '</small>' : '') + '</span></span>';
+    }
     function card(p, big) {
       return '<a href="#' + p.id + '" class="post-card' + (big ? ' big' : '') + '"><div class="pc-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"></div><div class="pc-body"><span class="post-tag">' + esc(p.tag) + ' · ' + p.date + '</span><h2>' + esc(p.title) + '</h2>' + (big ? '<p>' + esc(p.summary) + '</p>' : '') + '<span class="pc-meta">' + esc(p.author.split(',')[0]) + ' · ' + p.read + '</span></div></a>';
     }
@@ -1420,7 +1425,7 @@
       document.title = p.title + ' — CTOS One';
       $('news-head').innerHTML = '<div><a href="#" class="lnk back">All news</a></div>';
       var nPara = 0; var body = p.body.map(function (t) { if (t && t.h) return '<h2>' + esc(t.h) + '</h2>'; nPara += 1; return '<p>' + esc(t) + '</p>' + (nPara === 2 && p.pull ? '<blockquote class="pull">' + esc(p.pull) + '</blockquote>' : ''); }).join('');
-      $('news-body').innerHTML = '<article class="post"><header class="post-head"><span class="post-tag">' + esc(p.tag) + '</span><h1>' + esc(p.title) + '</h1><p class="post-lead">' + esc(p.summary) + '</p><p class="post-meta">' + esc(p.author) + ' · ' + p.date + ' · ' + p.read + ' read</p></header>' +
+      $('news-body').innerHTML = '<article class="post"><header class="post-head"><span class="post-tag">' + esc(p.tag) + '</span><h1>' + esc(p.title) + '</h1><p class="post-lead">' + esc(p.summary) + '</p><div class="post-meta">' + authorHtml(p) + '<span class="post-when">' + p.date + ' · ' + p.read + ' read</span></div></header>' +
         '<figure class="post-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.parentNode.style.display=\'none\'"></figure>' +
         '<div class="post-body">' + body + (p.takeaways ? '<aside class="takeaways"><h3>' + esc(p.takeawaysTitle || 'What to do this week') + '</h3><ol>' + p.takeaways.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></aside>' : '') + '</div>' +
         '<footer class="post-foot"><button type="button" class="btn btn-primary" data-flow-schedule>' + esc(p.cta || 'Schedule service') + '</button>' + (p.source ? '<a href="' + esc(p.source) + '" class="lnk" target="_blank" rel="noopener">' + esc(p.ctaLink || 'Read on customtruck.com') + '</a>' : '<a href="team.html" class="lnk">Talk to ' + esc(p.author.split(',')[0]) + '</a>') + '</footer></article>' +
