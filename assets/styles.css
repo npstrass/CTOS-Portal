@@ -309,6 +309,7 @@
     gap: 0;
     padding: 28px 40px;
   }
+  .stat { padding: 16px 0; }
   .stat:nth-child(odd) { padding-right: 28px; border-right: 1px solid rgba(255,255,255,0.12); }
   .stat:nth-child(even) { padding-left: 28px; }
   .stat:nth-child(-n+2) { border-bottom: 1px solid rgba(255,255,255,0.12); }
