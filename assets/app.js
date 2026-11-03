@@ -1,4 +1,3 @@
-/* CTOS One demo app. Renders every page from assets/data.js and keeps changes in the browser. */
 (function () {
   'use strict';
   var renderers = {}, el_mapInit, el_tabsInit;
