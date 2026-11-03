@@ -1410,7 +1410,7 @@
   renderers.news = function () {
     function authorHtml(p) {
       var name = p.author.split(',')[0], role = p.author.split(',').slice(1).join(',').trim(), ini = name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
-      var photo = p.authorPhoto || ('assets/img/authors/' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '.jpg');
+      var photo = (p.authorPhoto && !/licdn\.com/.test(p.authorPhoto)) ? p.authorPhoto : ('assets/img/authors/' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '.jpg');
       return '<span class="author"><span class="author-pic"><img src="' + esc(photo) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()"><b aria-hidden="true">' + esc(ini) + '</b></span><span class="author-t"><strong>' + esc(name) + '</strong>' + (role ? '<small>' + esc(role) + '</small>' : '') + '</span></span>';
     }
     function card(p, big) {
