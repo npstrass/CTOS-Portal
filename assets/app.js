@@ -371,8 +371,9 @@
     if (wos.length) finding.push(wos[0].state === 'waiting' ? 'an estimate of ' + money(woTotal(wos[0])) + ' is waiting on you' : 'in the shop at ' + wos[0].where);
     if (due) finding.push(due + ' inspection' + (due > 1 ? 's' : '') + ' due within 45 days');
     if (camps) finding.push(camps + ' open campaign' + (camps > 1 ? 's' : ''));
-    head.innerHTML = '<div><h1>Unit #' + v.unit + '</h1><p class="finding">' + esc(v.kind) + ' · ' + esc(v.chassis) + ' with ' + esc(v.body) + '. ' + (finding.length ? 'Right now: ' + finding.join(', ') + '.' : 'Nothing needs attention on this unit.') + '</p></div>' +
+    head.innerHTML = unitPhotoHtml(v) + '<div><h1>Unit #' + v.unit + '</h1><p class="finding">' + esc(v.kind) + ' · ' + esc(v.chassis) + ' with ' + esc(v.body) + '. ' + (finding.length ? 'Right now: ' + finding.join(', ') + '.' : 'Nothing needs attention on this unit.') + '</p></div>' +
       '<div class="side"><a href="#" class="btn btn-primary" data-flow-schedule data-unit="' + v.unit + '">Schedule service<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><span class="live">' + esc(v.status) + ' · ' + esc(v.loc) + '</span></div>';
+    wireUnitPhoto(v);
     $('unit-stats').innerHTML = [['v', num(v.odo), 'mi', 'Odometer', 'Next PM at ' + num(v.nextPm)], ['v', num(v.hours || 0), 'h', 'Boom or crane hours', (v.components || []).filter(function (c) { return c.hours != null && c.role !== 'chassis'; }).map(function (c) { return c.make + ' ' + c.model; }).join(', ') || 'No equipment'], ['v', v.fuel + '', '%', 'Fuel', v.mpg ? v.mpg.toFixed(1) + ' mpg, 30 days' : 'No telematics'], ['v' + (due ? ' attn' : ''), due + '', '', 'Inspections due', 'Within 45 days'], ['v' + (camps ? ' attn' : ''), camps + '', '', 'Open campaigns', camps ? 'No charge to complete' : 'All completed']].map(function (s) { return '<div class="stat-c"><div class="' + s[0] + '">' + s[1] + (s[2] ? '<small>' + s[2] + '</small>' : '') + '</div><div class="l">' + s[3] + '</div><div class="d">' + esc(s[4]) + '</div></div>'; }).join('');
     if ($('u-pm')) { var pmLeft = v.nextPm - v.odo; var booked = S.appointments.filter(function (ap) { return ap.unit === v.unit; }).sort(function (x, y) { return x.day - y.day; }); var insp = unitInspections(v.unit).map(function (i) { return { i: i, d: docDays(i.due) }; }).sort(function (x, y) { return x.d - y.d; });
       $('u-pm').innerHTML = '<div class="list">' +
@@ -1445,6 +1446,39 @@
   };
 
 
+
+  /* ---------- unit photo: seeded, or uploaded by the customer or CTOS ---------- */
+  function unitPhotoHtml(v) {
+    var k = /bucket/i.test(v.kind) ? 'bucket' : /digger|derrick/i.test(v.kind) ? 'digger' : /crane/i.test(v.kind) ? 'crane' : 'service';
+    return '<figure class="unit-photo' + (v.photo ? '' : ' none') + '"><img src="' + (v.photo ? esc(v.photo) : 'assets/img/placeholder-' + k + '.svg') + '" alt="' + (v.photo ? 'Unit #' + v.unit : '') + '" onerror="this.onerror=null;this.src=\'assets/img/placeholder-' + k + '.svg\';this.parentNode.classList.add(\'none\')">' +
+      '<figcaption><label class="btn btn-ghost sm up-btn"><input type="file" accept="image/*" id="u-photo-in" class="vh">' + (v.photo ? 'Change photo' : 'Add a photo') + '</label>' + (v.photo ? '<button type="button" class="lnk" id="u-photo-rm">Remove</button>' : '') + '</figcaption></figure>';
+  }
+  function wireUnitPhoto(v) {
+    var inp = $('u-photo-in'); if (!inp) return;
+    inp.addEventListener('change', function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      if (!/^image\//.test(f.type)) { toast('That file is not an image.'); return; }
+      var rd = new FileReader();
+      rd.onload = function () {
+        var img = new Image();
+        img.onload = function () {
+          // Resize on the way in so the photo fits in local storage and loads fast.
+          var max = 1200, s = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          var url = cv.toDataURL('image/jpeg', 0.82);
+          v.photo = url; save();
+          S.events.unshift({ t: 'Now', unit: v.unit, text: 'Photo updated by ' + personaInfo().name, kind: '' });
+          toast('Photo saved for Unit #' + v.unit + '.'); renderPage();
+        };
+        img.onerror = function () { toast('Could not read that image.'); };
+        img.src = rd.result;
+      };
+      rd.readAsDataURL(f);
+    });
+    var rm = $('u-photo-rm'); if (rm) rm.addEventListener('click', function () { confirmInline(rm.parentNode, 'Remove the photo for Unit #' + v.unit + '?', 'Remove', function () { delete v.photo; save(); renderPage(); }); });
+  }
+
   /* ---------- inventory: buy and rent ---------- */
   var invFilter = { mode: 'sale', kind: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near' };
   var invBasket = [];
@@ -1486,7 +1520,8 @@
     var sale = invFilter.mode === 'sale', inB = invBasket.indexOf(it.stock) >= 0, av = sale ? { ok: invReady(it), text: it.avail } : invAvailFor(it);
     var meter = it.cond === 'new' ? 'New · ' + num(it.miles) + ' mi' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : 'Rental fleet · ' + num(it.hours) + ' h');
     var acts = sale ? '<button type="button" class="btn ' + (inB ? 'btn-ghost on' : 'btn-ghost') + '" data-inv-pick="' + it.stock + '" aria-pressed="' + inB + '">' + (inB ? 'Added to quote' : 'Add to quote') + '</button><button type="button" class="lnk" data-inv-save="' + it.stock + '">Save build</button>' : '<button type="button" class="btn btn-ghost" data-inv-reserve="' + it.stock + '"' + (av.ok ? '' : ' disabled') + '>' + (av.ok ? 'Reserve' : 'Not available') + '</button><button type="button" class="lnk" data-inv-detail="' + it.stock + '">Details</button>';
-    return '<article class="inv-card' + (inB ? ' picked' : '') + '" data-stock="' + it.stock + '"><div class="inv-top"><span class="inv-kind">' + esc(it.kindName) + '</span><span class="inv-stock mono">' + it.stock + '</span></div>' +
+    var photo = it.photo || ('assets/img/' + it.stock + '.jpg'), fallback = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
+    return '<article class="inv-card' + (inB ? ' picked' : '') + '" data-stock="' + it.stock + '"><figure class="inv-photo"><img src="' + esc(photo) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'' + fallback + '\';this.classList.add(\'ph\')"></figure><div class="inv-top"><span class="inv-kind">' + esc(it.kindName) + '</span><span class="inv-stock mono">' + it.stock + '</span></div>' +
       '<h4><button type="button" class="row-btn" data-inv-detail="' + it.stock + '">' + esc(invTitle(it)) + '</button></h4>' +
       '<p class="inv-spec">' + esc(it.spec) + '</p><p class="inv-chassis">' + esc(it.chassis) + ' · ' + esc(meter) + '</p>' +
       '<div class="inv-foot"><div class="inv-where"><strong>' + esc(it.loc) + (LOC_MI[it.loc] ? ' · ' + num(LOC_MI[it.loc]) + ' mi' : '') + '</strong><span class="' + (av.ok ? 'ok-t' : 'warn-t') + '">' + esc(av.text) + '</span></div><div class="inv-price">' + invPriceHtml(it, sale) + '</div></div>' +
@@ -1542,7 +1577,7 @@
     var pct = S.pricing.truckPct, rp = S.pricing.rentalPct;
     openDrawer({
       kind: esc(it.kindName) + ' · ' + it.stock, title: invTitle(it), meta: it.loc + ' · ' + it.avail,
-      body: '<dl class="dr-facts"><dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
+      body: '<figure class="inv-photo dr-photo"><img src="' + esc(it.photo || ('assets/img/' + it.stock + '.jpg')) + '" alt="" onerror="this.onerror=null;this.src=\'assets/img/placeholder-' + (it.kind || 'service') + '.svg\';this.classList.add(\'ph\')"></figure><dl class="dr-facts"><dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
         '<h4 class="dr-h">Specification</h4><div class="list li-list"><div class="row fig li"><span>Chassis<small>' + esc(it.chassis) + '</small></span></div><div class="row fig li"><span>Equipment<small>' + esc(it.equip) + ' · ' + esc(it.spec) + '</small></span></div></div>' +
         (it.sale ? '<div class="row fig total"><span>Your price<small>' + esc(S.pricing.tier) + (pct ? ' · ' + pct + '% off list of ' + money(it.price) : '') + ' · before tax, FET and title</small></span><b>' + money(yourPrice(it.price)) + '</b></div>' : '') +
         (it.rent ? '<div class="row fig total"><span>Your rental rates<small>' + (rp ? rp + '% off the rate card · ' : '') + 'before tax and damage waiver · delivery quoted separately</small></span><b>' + money(yourRate(it.rates.day)) + ' / day<small style="display:block;font-weight:400">' + money(yourRate(it.rates.week)) + ' / wk · ' + money(yourRate(it.rates.month)) + ' / mo</small></b></div>' : ''),
