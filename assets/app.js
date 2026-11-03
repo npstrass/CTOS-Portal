@@ -1162,6 +1162,7 @@
       return;
     }
     if (ob) ob.hidden = true;
+    var hn = $('home-news'); if (hn) hn.innerHTML = S.posts.slice(0, 3).map(function (p) { return '<a href="news.html#' + p.id + '" class="news-item"><div class="news-img"><img src="' + esc(p.img) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'"></div><div class="news-date">' + esc(p.tag) + ' · ' + p.date + '</div><h4>' + esc(p.title) + '</h4></a>'; }).join('');
     if (isEmployee()) { $('home-greet').textContent = S.user.org; $('home-sub').textContent = 'Mike Brown\u2019s account, as he sees it, plus your internal panel.'; }
     var inshop = S.workorders.filter(function (w) { return w.state !== 'done'; });
     var due = S.vehicles.filter(function (v) { return v.nextPm - v.odo <= 1000; }).length;
@@ -1410,7 +1411,7 @@
     function authorHtml(p) {
       var name = p.author.split(',')[0], role = p.author.split(',').slice(1).join(',').trim(), ini = name.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
       var photo = p.authorPhoto || ('assets/img/authors/' + name.toLowerCase().replace(/[^a-z]+/g, '-') + '.jpg');
-      return '<span class="author"><span class="author-pic"><img src="' + esc(photo) + '" alt="" onerror="this.remove()"><b aria-hidden="true">' + esc(ini) + '</b></span><span class="author-t"><strong>' + esc(name) + '</strong>' + (role ? '<small>' + esc(role) + '</small>' : '') + '</span></span>';
+      return '<span class="author"><span class="author-pic"><img src="' + esc(photo) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()"><b aria-hidden="true">' + esc(ini) + '</b></span><span class="author-t"><strong>' + esc(name) + '</strong>' + (role ? '<small>' + esc(role) + '</small>' : '') + '</span></span>';
     }
     function card(p, big) {
       return '<a href="#' + p.id + '" class="post-card' + (big ? ' big' : '') + '"><div class="pc-img"><img src="' + p.img + '" alt="" loading="lazy" onerror="this.style.display=\'none\'"></div><div class="pc-body"><span class="post-tag">' + esc(p.tag) + ' · ' + p.date + '</span><h2>' + esc(p.title) + '</h2>' + (big ? '<p>' + esc(p.summary) + '</p>' : '') + '<span class="pc-meta">' + esc(p.author.split(',')[0]) + ' · ' + p.read + '</span></div></a>';
