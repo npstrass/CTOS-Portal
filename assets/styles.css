@@ -1874,3 +1874,34 @@ table.ql-items { width: 100%; }
 .inv-filters-v .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .inv-filters-v .f2 label { min-width: 0; }
 @media (max-width: 900px) { .inv-filters-v .f2 { grid-column: 1 / -1; } }
+
+/* ---------- Stock page: the spec sheet on screen ---------- */
+.st-kicker { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 4px; }
+.st-sub { font-size: 1rem; color: var(--ink-soft); margin-top: 2px; }
+.st-gallery { padding: 14px; }
+.st-gallery .gallery { margin: 0; }
+.st-gallery .st-main { margin: 0; border: 0; aspect-ratio: 16 / 9; }
+.st-gallery .g-thumbs { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.spec-cols { columns: 2; column-gap: 28px; padding: 4px 22px 12px; }
+.spec-group { break-inside: avoid; margin-bottom: 18px; }
+.spec-group h4 { font-size: 0.86rem; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--ink); margin-bottom: 2px; }
+.spec-group dl { margin: 0; }
+.spec-group dl div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 0.84rem; }
+.spec-group dt { color: var(--ink-soft); }
+.spec-group dd { margin: 0; text-align: right; font-weight: 500; }
+.st-price { padding: 18px 22px 16px; }
+.st-big { font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; color: var(--red); }
+.st-big small { font-size: 1rem; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.st-list { margin-top: 8px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+.st-list s { color: var(--muted); }
+.st-mo { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.st-mo b { display: block; font-size: 1.25rem; font-weight: 500; }
+.st-mo span { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.st-avail { margin-top: 12px; font-size: 0.86rem; font-weight: 500; }
+.st-rentline { margin-top: 6px; font-size: 0.82rem; color: var(--ink-soft); }
+.st-opt { cursor: pointer; }
+.st-opt input { margin-right: 6px; accent-color: var(--ink); }
+.st-opt small { display: block; font-size: 0.72rem; color: var(--muted); font-family: var(--mono, ui-monospace, monospace); padding-left: 22px; }
+.st-legal { margin-top: 4px; font-size: 0.76rem; color: var(--muted); line-height: 1.5; max-width: 90ch; }
+@media (max-width: 1240px) { .spec-cols { columns: 1; } }
+@media (max-width: 900px) { .spec-cols { padding: 4px 14px 10px; } .st-price { padding: 14px; } .st-gallery .g-thumbs { grid-template-columns: repeat(4, minmax(0, 1fr)); } .st-big { font-size: 1.7rem; } }
