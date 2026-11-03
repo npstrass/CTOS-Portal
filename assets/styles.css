@@ -1871,3 +1871,6 @@ table.ql-items { width: 100%; }
 .lbl-note { display: block; font-weight: 400; font-size: 0.74rem; color: var(--muted); margin: -2px 0 4px; }
 .pb-opts .check small { display: block; font-size: 0.72rem; color: var(--muted); }
 .inv-stock { white-space: nowrap; }
+.inv-filters-v .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inv-filters-v .f2 label { min-width: 0; }
+@media (max-width: 900px) { .inv-filters-v .f2 { grid-column: 1 / -1; } }

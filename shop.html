@@ -130,10 +130,11 @@
             <section class="panel">
               <div class="section-head"><h3>Filter</h3><a href="#trucks" class="lnk" id="inv-clear">Clear</a></div>
               <div class="inv-filters-v">
-                <label class="inv-search"><span class="vh">Search inventory</span><input type="search" id="inv-q" placeholder="Item name, item number, make, model or stock #"></label>
-                <label>Business area<select id="inv-ba"><option value="">All business areas</option></select></label>
-                <label>Product group<select id="inv-pg"><option value="">All product groups</option></select></label>
-                <label>Item group<select id="inv-ig"><option value="">All item groups</option></select></label>
+                <label class="inv-search"><span class="vh">Search inventory</span><input type="search" id="inv-q" placeholder="Make, model, equipment, item or stock #"></label>
+                <label>Industry<select id="inv-ba"><option value="">Any industry</option></select></label>
+                <label>Truck type<select id="inv-pg"><option value="">Any type</option></select></label>
+                <label>Size and class<select id="inv-ig"><option value="">Any size</option></select></label>
+                <div class="form-2 f2"><label>Make<select id="inv-make"><option value="">Any make</option></select></label><label>Model<select id="inv-model"><option value="">Any model</option></select></label></div>
                 <label>Location<select id="inv-loc"><option value="">Any CTOS location</option></select></label>
                 <label id="inv-cond-wrap">Condition<select id="inv-cond"><option value="">New and used</option><option value="new">New</option><option value="used">Used, certified</option></select></label>
                 <label>Availability<select id="inv-avail"><option value="">Any</option><option value="now">In stock now</option></select></label>
@@ -165,10 +166,11 @@
               <div class="section-head"><h3>Dates and filters</h3><a href="#rentals" class="lnk" id="rent-clear">Clear</a></div>
               <div class="inv-filters-v">
                 <div id="inv-dates"><label>Needed from<input type="date" id="inv-from"></label><label>Term<select id="inv-term"><option value="7">1 week</option><option value="30" selected>1 month</option><option value="90">3 months</option><option value="180">6 months</option></select></label></div>
-                <label class="inv-search"><span class="vh">Search rentals</span><input type="search" id="rent-q" placeholder="Item name, item number, make or unit #"></label>
-                <label>Business area<select id="rent-ba"><option value="">All business areas</option></select></label>
-                <label>Product group<select id="rent-pg"><option value="">All product groups</option></select></label>
-                <label>Item group<select id="rent-ig"><option value="">All item groups</option></select></label>
+                <label class="inv-search"><span class="vh">Search rentals</span><input type="search" id="rent-q" placeholder="Make, model, equipment or unit #"></label>
+                <label>Industry<select id="rent-ba"><option value="">Any industry</option></select></label>
+                <label>Truck type<select id="rent-pg"><option value="">Any type</option></select></label>
+                <label>Size and class<select id="rent-ig"><option value="">Any size</option></select></label>
+                <div class="form-2 f2"><label>Make<select id="rent-make"><option value="">Any make</option></select></label><label>Model<select id="rent-model"><option value="">Any model</option></select></label></div>
                 <label>Location<select id="rent-loc"><option value="">Any CTOS location</option></select></label>
                 <label>Availability<select id="rent-avail"><option value="">Any</option><option value="now">Available for my dates</option></select></label>
               </div>

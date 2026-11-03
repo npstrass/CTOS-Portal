@@ -1479,8 +1479,8 @@
   function invReady(it) { return /now|In stock/.test(it.avail) && !/Reserved/.test(it.avail); }
   var LOC_MI = { 'Fredericksburg, VA': 14, 'Richmond, VA': 52, 'Union Grove, WI': 790, 'Kansas City, MO': 1050, 'Houston, TX': 1380 };
   var stockF = {
-    sale: { mode: 'sale', ba: '', pg: '', ig: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near', ids: { q: 'inv-q', ba: 'inv-ba', pg: 'inv-pg', ig: 'inv-ig', loc: 'inv-loc', cond: 'inv-cond', avail: 'inv-avail', sort: 'inv-sort', clear: 'inv-clear', count: 'inv-count', results: 'inv-results' } },
-    rent: { mode: 'rent', ba: '', pg: '', ig: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near', ids: { q: 'rent-q', ba: 'rent-ba', pg: 'rent-pg', ig: 'rent-ig', loc: 'rent-loc', avail: 'rent-avail', sort: 'rent-sort', clear: 'rent-clear', count: 'rent-count', results: 'rent-results', from: 'inv-from', term: 'inv-term' } }
+    sale: { mode: 'sale', ba: '', pg: '', ig: '', make: '', model: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near', ids: { q: 'inv-q', ba: 'inv-ba', pg: 'inv-pg', ig: 'inv-ig', make: 'inv-make', model: 'inv-model', loc: 'inv-loc', cond: 'inv-cond', avail: 'inv-avail', sort: 'inv-sort', clear: 'inv-clear', count: 'inv-count', results: 'inv-results' } },
+    rent: { mode: 'rent', ba: '', pg: '', ig: '', make: '', model: '', loc: '', cond: '', q: '', avail: '', from: '', term: 30, sort: 'near', ids: { q: 'rent-q', ba: 'rent-ba', pg: 'rent-pg', ig: 'rent-ig', make: 'rent-make', model: 'rent-model', loc: 'rent-loc', avail: 'rent-avail', sort: 'rent-sort', clear: 'rent-clear', count: 'rent-count', results: 'rent-results', from: 'inv-from', term: 'inv-term' } }
   };
   function availFor(it, F) {
     if (/Reserved/.test(it.avail)) return { ok: false, text: it.avail };
@@ -1495,6 +1495,8 @@
     if (F.ba && it.ba !== F.ba) return false;
     if (F.pg && it.pg !== F.pg) return false;
     if (F.ig && it.ig !== F.ig) return false;
+    if (F.make && it.make !== F.make) return false;
+    if (F.model && it.model !== F.model) return false;
     if (F.loc && it.loc.indexOf(F.loc) < 0) return false;
     if (F.cond && F.mode === 'sale' && it.cond !== F.cond) return false;
     if (F.avail === 'now' && !availFor(it, F).ok) return false;
@@ -1561,10 +1563,13 @@
     root.className = stockView === 'grid' ? 'inv-grid' : 'inv-list';
     var items = S.inventory.filter(function (it) { return stockMatches(it, F); }).sort(stockSort(F));
     var pool = S.inventory.filter(function (it) { return F.mode === 'sale' ? it.sale : it.rent; });
-    function fill(id, key, filt, label) { var el = $(F.ids[id]); if (!el) return; var cnt = {}; pool.filter(filt).forEach(function (it) { cnt[it[key]] = (cnt[it[key]] || 0) + 1; }); var cur = F[id]; if (cur && !cnt[cur]) { F[id] = ''; cur = ''; } el.innerHTML = '<option value="">' + label + '</option>' + Object.keys(cnt).sort().map(function (k) { return '<option value="' + esc(k) + '"' + (k === cur ? ' selected' : '') + '>' + esc(titleCase(k)) + ' (' + cnt[k] + ')</option>'; }).join(''); }
-    fill('ba', 'ba', function () { return true; }, 'All business areas');
-    fill('pg', 'pg', function (it) { return !F.ba || it.ba === F.ba; }, 'All product groups');
-    fill('ig', 'ig', function (it) { return (!F.ba || it.ba === F.ba) && (!F.pg || it.pg === F.pg); }, 'All item groups');
+    function fill(id, key, filt, label) { var el = $(F.ids[id]); if (!el) return; var cnt = {}; pool.filter(filt).forEach(function (it) { cnt[it[key]] = (cnt[it[key]] || 0) + 1; }); var cur = F[id]; if (cur && !cnt[cur]) { F[id] = ''; cur = ''; } el.innerHTML = '<option value="">' + label + '</option>' + Object.keys(cnt).sort().map(function (k) { return '<option value="' + esc(k) + '"' + (k === cur ? ' selected' : '') + '>' + esc(key === 'make' || key === 'model' ? k : titleCase(k)) + ' (' + cnt[k] + ')</option>'; }).join(''); }
+    fill('ba', 'ba', function () { return true; }, 'Any industry');
+    fill('pg', 'pg', function (it) { return !F.ba || it.ba === F.ba; }, 'Any type');
+    fill('ig', 'ig', function (it) { return (!F.ba || it.ba === F.ba) && (!F.pg || it.pg === F.pg); }, 'Any size');
+    var inGroup = function (it) { return (!F.ba || it.ba === F.ba) && (!F.pg || it.pg === F.pg) && (!F.ig || it.ig === F.ig); };
+    fill('make', 'make', inGroup, 'Any make');
+    fill('model', 'model', function (it) { return inGroup(it) && (!F.make || it.make === F.make); }, 'Any model');
     var ls = $(F.ids.loc); if (ls && ls.options.length <= 1) { var locs = []; S.inventory.forEach(function (it) { if (locs.indexOf(it.loc) < 0) locs.push(it.loc); }); ls.innerHTML = '<option value="">Any CTOS location</option>' + locs.sort(function (a, b) { return (LOC_MI[a] || 999) - (LOC_MI[b] || 999); }).map(function (l) { return '<option>' + esc(l) + (LOC_MI[l] ? ' · ' + num(LOC_MI[l]) + ' mi' : '') + '</option>'; }).join(''); }
     $(F.ids.count).textContent = items.length ? items.length + ' truck' + (items.length === 1 ? '' : 's') + (F.mode === 'sale' ? ' for sale' : ' to rent') + (F.from ? ' from ' + new Date(F.from + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : 'No matches';
     root.innerHTML = items.length ? items.map(function (it) { return stockView === 'grid' ? invCard(it, F) : invRow(it, F); }).join('') : emptyHtml('Nothing matches those filters. Clear one, or describe what you need and Sarah locates it from national stock.');
@@ -1577,8 +1582,8 @@
   function toggleRental(stock) { var t = tray().rentals, i = t.map(function (r) { return r.stock; }).indexOf(stock); if (i >= 0) t.splice(i, 1); else { var F = stockF.rent, d = F.from ? new Date(F.from + 'T12:00:00') : new Date(); if (!F.from) d.setDate(d.getDate() + 2); t.push({ stock: stock, start: d.toISOString().slice(0, 10), term: F.term, how: 'deliver', site: (S.sites.filter(function (s) { return s.type !== 'CTOS location'; })[0] || {}).name || 'Other address' }); toast(stock + ' added to your request.'); } save(); renderPage(); }
   function initStock(F) {
     if (!$(F.ids.results)) return;
-    Object.keys(F.ids).forEach(function (k) { var el = $(F.ids[k]); if (!el || k === 'count' || k === 'results' || k === 'clear') return; once(el, k === 'q' ? 'input' : 'change', function () { F[k] = k === 'term' ? +el.value : el.value.trim(); if (k === 'ba') { F.pg = ''; F.ig = ''; } if (k === 'pg') F.ig = ''; renderStock(F); }); });
-    once($(F.ids.clear), 'click', function (e) { e.preventDefault(); ['ba', 'pg', 'ig', 'loc', 'cond', 'q', 'avail', 'from'].forEach(function (k) { F[k] = ''; if ($(F.ids[k])) $(F.ids[k]).value = ''; }); F.term = 30; F.sort = 'near'; if ($(F.ids.term)) $(F.ids.term).value = '30'; if ($(F.ids.sort)) $(F.ids.sort).value = 'near'; renderStock(F); });
+    Object.keys(F.ids).forEach(function (k) { var el = $(F.ids[k]); if (!el || k === 'count' || k === 'results' || k === 'clear') return; once(el, k === 'q' ? 'input' : 'change', function () { F[k] = k === 'term' ? +el.value : el.value.trim(); if (k === 'ba') { F.pg = ''; F.ig = ''; } if (k === 'pg') F.ig = ''; if (k === 'make') F.model = ''; renderStock(F); }); });
+    once($(F.ids.clear), 'click', function (e) { e.preventDefault(); ['ba', 'pg', 'ig', 'make', 'model', 'loc', 'cond', 'q', 'avail', 'from'].forEach(function (k) { F[k] = ''; if ($(F.ids[k])) $(F.ids[k]).value = ''; }); F.term = 30; F.sort = 'near'; if ($(F.ids.term)) $(F.ids.term).value = '30'; if ($(F.ids.sort)) $(F.ids.sort).value = 'near'; renderStock(F); });
   }
   // Parts catalog view
   var spF = { q: '', unit: '', cat: '' };
@@ -1638,7 +1643,7 @@
     var pct = S.pricing.truckPct, rp = S.pricing.rentalPct, inT = mode === 'sale' ? inTrayTruck(it.stock) : inTrayRental(it.stock);
     openDrawer({
       kind: esc(it.kindName) + ' · ' + it.stock, title: invTitle(it), meta: it.loc + ' · ' + it.avail,
-      body: galleryHtml(it) + '<dl class="dr-facts">' + (it.item ? '<dt>Item</dt><dd><span class="mono">' + esc(it.item) + '</span> · ' + esc(it.itemName) + '</dd><dt>Group</dt><dd>' + esc(titleCase(it.ba)) + ' › ' + esc(titleCase(it.pg)) + ' › ' + esc(titleCase(it.ig)) + '</dd>' : '') + '<dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
+      body: galleryHtml(it) + '<dl class="dr-facts">' + (it.item ? '<dt>Item</dt><dd><span class="mono">' + esc(it.item) + '</span> · ' + esc(it.itemName) + '</dd><dt>Category</dt><dd>' + esc(titleCase(it.ba)) + ' › ' + esc(titleCase(it.pg)) + ' › ' + esc(titleCase(it.ig)) + '</dd>' : '') + '<dt>Condition</dt><dd>' + (it.cond === 'new' ? 'New' : it.cond === 'used' ? 'Used, CTOS certified' : 'Rental fleet') + '</dd><dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd><dt>Color</dt><dd>' + esc(it.color) + '</dd></dl>' +
         '<h4 class="dr-h">Specification</h4><div class="list li-list"><div class="row fig li"><span>Chassis<small>' + esc(it.chassis) + '</small></span></div><div class="row fig li"><span>Equipment<small>' + esc(it.equip) + ' · ' + esc(it.spec) + '</small></span></div></div>' +
         (it.sale ? '<div class="row fig total"><span>Your price<small>' + esc(S.pricing.tier) + (pct ? ' · ' + pct + '% off list of ' + money(it.price) : '') + ' · before tax, FET and title</small></span><b>' + money(yourPrice(it.price)) + '</b></div>' : '') +
         (it.rent ? '<div class="row fig total"><span>Your rental rates<small>' + (rp ? rp + '% off the rate card · ' : '') + 'before tax and damage waiver · delivery quoted separately</small></span><b>' + money(yourRate(it.rates.day)) + ' / day<small style="display:block;font-weight:400">' + money(yourRate(it.rates.week)) + ' / wk · ' + money(yourRate(it.rates.month)) + ' / mo</small></b></div>' : ''),
@@ -1753,14 +1758,14 @@
       if (cfg.equipment && !equip.some(function (e) { return e[0] === cfg.equipment; })) cfg.equipment = '';
       if (cfg.body && !bodies.some(function (b) { return b[0] === cfg.body; })) cfg.body = '';
       return '<form class="form" id="pb-form"><label>Name<input type="text" id="pb-name" required value="' + esc(seed.name || '') + '" placeholder="Standard 55 ft bucket"></label>' +
-        '<h4 class="dr-sub">What kind of truck</h4><div class="form-2"><label>Business area<select id="pb-ba">' + opt(bas, cfg.ba) + '</select></label><label>Product group<select id="pb-pg">' + opt(pgs, cfg.pg) + '</select></label></div>' +
-        '<label>Item group<select id="pb-ig">' + opt(igs, cfg.ig) + '</select></label>' +
-        '<label>Base configuration<small class="lbl-note">Complete-unit items CTOS already builds in this group</small><select id="pb-base"><option value="">Custom, specify below</option>' + bases.map(function (b) { return '<option value="' + esc(b[1]) + '"' + (b[1] === cfg.base ? ' selected' : '') + '>' + esc(b[1] + ' · ' + b[0]) + '</option>'; }).join('') + '</select></label>' +
+        '<h4 class="dr-sub">What kind of truck</h4><div class="form-2"><label>Industry<select id="pb-ba">' + opt(bas, cfg.ba) + '</select></label><label>Truck type<select id="pb-pg">' + opt(pgs, cfg.pg) + '</select></label></div>' +
+        '<label>Size and class<select id="pb-ig">' + opt(igs, cfg.ig) + '</select></label>' +
+        '<label>Start from a CTOS standard build<small class="lbl-note">Configurations CTOS already builds in this size, with their item numbers</small><select id="pb-base"><option value="">Custom, specify below</option>' + bases.map(function (b) { return '<option value="' + esc(b[1]) + '"' + (b[1] === cfg.base ? ' selected' : '') + '>' + esc(b[1] + ' · ' + b[0]) + '</option>'; }).join('') + '</select></label>' +
         '<h4 class="dr-sub">Chassis, body and equipment</h4><div class="form-2"><label>Chassis<select id="pb-chassis">' + opt(chassisAll, cfg.chassis) + '</select></label><label>Model year<select id="pb-year">' + ['2026', '2027'].map(function (y) { return '<option' + (y === cfg.year ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label></div>' +
         '<div class="form-2"><label>Body<select id="pb-body">' + opt(bodies.map(function (b) { return b[0]; }), cfg.body, 'Per base configuration') + '</select></label><label>Equipment<select id="pb-equip">' + opt(equip.map(function (e) { return e[0]; }), cfg.equipment, 'Per base configuration') + '</select></label></div>' +
         '<h4 class="dr-sub">Options<span class="muted">501_ items</span></h4><div class="pb-opts">' + BUILD_OPTS.options.map(function (o) { return '<label class="check"><input type="checkbox" value="' + o[0] + '"' + ((cfg.options || []).some(function (x) { return x[0] === o[0]; }) ? ' checked' : '') + '><span>' + esc(o[1]) + '<small>' + o[0] + (o[2] ? ' · ' + money(o[2]) : ' · no charge') + '</small></span></label>'; }).join('') + '</div>' +
         '<div class="form-2"><label>Color<select id="pb-color">' + BUILD_OPTS.colors.map(function (o) { return '<option' + (cfg.color === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label><label>Units built this way<input type="text" id="pb-units" value="' + esc((seed.units || []).join(', ')) + '" placeholder="1042, 1130"></label></div>' +
-        '<label>Notes for Sarah<textarea id="pb-notes" rows="2" placeholder="Anything the item structure does not capture">' + esc(cfg.notes || '') + '</textarea></label>' +
+        '<label>Notes for Sarah<textarea id="pb-notes" rows="2" placeholder="Anything the choices above do not capture">' + esc(cfg.notes || '') + '</textarea></label>' +
         '<div class="pb-preview"><span>As it will read on the quote</span><strong id="pb-spec">' + esc(buildSpec(cfg)) + '</strong><small id="pb-detail">' + esc(buildDetail(cfg)) + '</small></div></form>';
     }
     function read() {
@@ -1785,7 +1790,7 @@
       });
     }
     openDrawer({
-      kind: editing ? 'Edit preferred build' : 'Configure a build', title: editing ? seed.name : 'New preferred build', meta: 'Built from the CTOS item structure: business area, product group, item group, then a base configuration with chassis, body, equipment and 501_ options.',
+      kind: editing ? 'Edit preferred build' : 'Configure a build', title: editing ? seed.name : 'New preferred build', meta: 'Pick the kind of truck, start from a CTOS standard build or go custom, then chassis, body, equipment, options and color.',
       body: '', foot: '<button type="submit" form="pb-form" class="btn btn-primary">' + (editing ? 'Save changes' : 'Save build') + '</button>' + (editing ? '<button type="button" class="lnk" id="pb-del">Remove</button>' : ''),
       row: row,
       after: function () {
