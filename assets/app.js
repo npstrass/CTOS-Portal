@@ -1,3 +1,4 @@
+/* CTOS One demo app. Renders every page from assets/data.js and keeps changes in the browser. */
 (function () {
   'use strict';
   var renderers = {}, el_mapInit, el_tabsInit;
@@ -218,7 +219,9 @@
   function expiringDocs(days) { return S.documents.map(function (d) { return { d: d, days: docDays(d.expires) }; }).filter(function (x) { return x.days <= days; }).sort(function (a, b) { return a.days - b.days; }); }
 
   /* ---------- quotes (mirrored from Salesforce) ---------- */
-  var QSTAGE = { requested: ['Requested', 'processing'], review: ['In review at CTOS', 'processing'], ready: ['Quote ready', 'shipped'], accepted: ['Accepted', 'off'], declined: ['Declined', 'off'] };
+  var QSTAGE = { requested: ['Requested', 'processing'], review: ['In review at CTOS', 'processing'], ready: ['Quote ready', 'shipped'], rbo: ['Buyer\u2019s order requested', 'processing'], rboSent: ['Buyer\u2019s order out for signature', 'shipped'], accepted: ['Signed · ordered', 'off'], declined: ['Declined', 'off'] };
+  var Q_ORDER = { requested: 0, review: 1, ready: 2, rbo: 3, rboSent: 3, accepted: 4, declined: 4 };
+  function quoteStagesList(q) { return [['Requested', q.requested], ['In review at CTOS', q.stage === 'requested' ? '' : q.reviewed || q.updated], ['Quote ready', Q_ORDER[q.stage] >= 2 && q.stage !== 'declined' ? q.quoted || q.updated : ''], ['Buyer\u2019s order', q.stage === 'rbo' ? 'Requested ' + q.updated : q.stage === 'rboSent' ? 'Sent ' + q.updated : q.stage === 'accepted' ? q.rboSentOn || '' : ''], [q.stage === 'declined' ? 'Declined' : 'Signed and ordered', q.stage === 'accepted' || q.stage === 'declined' ? q.updated : '']]; }
   function sfStamp() { return 'Synced with Salesforce ' + S.salesforce.lastSync; }
   function quoteTotal(q) { return sum(q.lines.map(function (l) { return l.qty * l.unitPrice; })); }
   function quoteUnits(q) { return sum(q.lines.map(function (l) { return l.qty; })); }
@@ -257,82 +260,13 @@
     addNotification({ title: 'Invoice ' + no + ' issued for ' + q.no, text: money(total) + ' before tax and title. Pay from Billing, or finance it.', href: 'billing.html' });
     closeDrawer(); toast('Invoice ' + no + ' requested. It is on Billing.'); renderPage();
   }
-  function flowQuote(q, row) {
-    var emp = isEmployee(), total = quoteTotal(q), units = quoteUnits(q);
-    var foot = '';
-    if (q.stage === 'ready' && !emp) foot = '<button type="button" class="btn btn-primary" id="q-accept">Accept ' + units + ' truck' + (units > 1 ? 's' : '') + ', ' + money(total) + '</button><button type="button" class="lnk" id="q-decline">Decline</button><a href="team.html" class="lnk">Ask Sarah</a>';
-    else if (q.stage === 'review' && emp) foot = '<button type="button" class="btn btn-primary" id="q-send">Send quote to customer</button><span class="wo-note">Sets the Salesforce Quote to Presented.</span>';
-    else if (q.stage === 'requested' && emp) foot = '<button type="button" class="btn btn-primary" id="q-review">Start review</button>';
-    else foot = '<a href="team.html" class="lnk">' + (emp ? 'Open in Salesforce' : 'Ask Sarah a question') + '</a>';
-    if (!emp && (q.stage === 'ready' || q.stage === 'accepted')) foot += (q.invoice ? '<a href="billing.html" class="lnk">Invoice ' + esc(q.invoice) + '</a>' : '<button type="button" class="lnk" id="q-invoice">Request an invoice</button>') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>';
-    openDrawer({
-      kind: QSTAGE[q.stage][0] + ' · ' + q.no, warn: q.stage === 'ready' && !emp, title: units + ' truck' + (units > 1 ? 's' : '') + ' on ' + q.lines.length + ' line' + (q.lines.length > 1 ? 's' : ''), meta: 'Owner ' + q.owner + ' · requested ' + q.requested + (q.validUntil ? ' · valid until ' + q.validUntil : ''),
-      body: '<dl class="dr-facts"><dt>Salesforce</dt><dd class="mono">' + q.sfId + '</dd><dt>Updated</dt><dd>' + q.updated + '</dd></dl>' +
-        '<ol class="stages" aria-label="Quote progress">' + stagesHtml([['Requested', q.requested], ['In review at CTOS', q.stage === 'requested' ? '' : q.updated], ['Quote ready', q.stage === 'ready' || q.stage === 'accepted' ? q.updated : ''], [q.stage === 'declined' ? 'Declined' : 'Accepted', q.stage === 'accepted' || q.stage === 'declined' ? q.updated : '']], { requested: 0, review: 1, ready: 2, accepted: 3, declined: 3 }[q.stage]) + '</ol>' +
-        '<h4 class="dr-h">Quote lines</h4><div class="list li-list">' + q.lines.map(function (l) { var ts = lineTrucks(q, l); return '<div class="row fig li"><span>' + esc(l.ql) + ' · ' + esc(l.spec) + '<small>' + esc(l.detail) + ' · qty ' + l.qty + (l.eta ? ' · ' + esc(l.eta) : '') + (l.orderNo ? ' · order ' + esc(l.orderNo) : '') + '</small>' + (ts.length ? ts.map(function (t) { return '<span class="ql-track in-dr">' + trackerHtml(lineStage(q, l, t)) + '</span>'; }).join('') : '<span class="ql-track in-dr">' + trackerHtml(lineStage(q, l, null)) + '</span>') + '</span><b>' + (l.unitPrice ? money(l.unitPrice) + (l.qty > 1 ? ' × ' + l.qty : '') : '<span class="muted">Pricing pending</span>') + '</b></div>' + lineItemsHtml(l); }).join('') +
-        (total ? '<div class="row fig total"><span>Quote total<small>Before tax, FET and title</small></span><b>' + money(total) + '</b></div>' : '') + '</div>' +
-        (q.note ? '<p class="dr-summary" style="margin-top:12px">' + esc(q.note) + '</p>' : '') +
-        '<h4 class="dr-h terms-h">Your details for this order' + (emp ? '' : '<button type="button" class="lnk" id="q-terms">Change</button>') + '</h4>' + termsHtml(q) +
-        '<p class="form-note sf-note">' + sfStamp() + '. This quote and its lines are Salesforce records; the portal reads them and writes your decision back.</p>',
-      foot: foot, row: row,
-      after: function () {
-        var tb = $('q-terms'); if (tb) tb.addEventListener('click', function () { flowQuoteTerms(q, function () { flowQuote(q, row); }); });
-        var inv = $('q-invoice'); if (inv) inv.addEventListener('click', function () { confirmInline($('dr-foot'), 'Issue an invoice for ' + q.no + ', ' + money(total) + ' before tax and title?' + (q.stage === 'ready' ? ' This also accepts the quote.' : ''), 'Request invoice', function () { if (q.stage === 'ready') doAccept(); requestInvoice(q); }); });
-        var fin = $('q-finance'); if (fin) fin.addEventListener('click', function () { flowCreditApp({ financing: true, quote: q, amount: total }); });
-        var doAccept = function () {
-            q.stage = 'accepted'; q.updated = 'Today';
-            var made = [];
-            q.lines.forEach(function (l) {
-              var mine = [];
-              for (var i = 0; i < l.qty; i++) {
-                var no = 'T-' + (2066 + S.trucks.length + 1);
-                S.trucks.push({ no: no, quote: q.no, ql: l.ql, spec: l.spec, detail: l.detail, price: l.unitPrice, ordered: 'Today', eta: l.eta || 'TBD', where: 'Awaiting build slot', stage: 0, stages: [['Ordered', 'Today'], ['In production', ''], ['Built, in transit', ''], ['Prep at CTOS', ''], ['Delivery', l.eta || '']] });
-                made.push(no); mine.push(no);
-              }
-              l.orderNo = mine.join(', ');
-            });
-            q.note = 'Accepted from the portal. Orders ' + made.join(', ') + '. Purchase agreement to follow.';
-            S.salesforce.lastSync = 'Just now'; save();
-            addNotification({ title: q.no + ' accepted', text: money(total) + '. Orders ' + made.join(', ') + ' are on the Trucks tab; Sarah has the agreement.', href: 'orders.html#trucks' });
-            closeDrawer(); toast('Quote accepted. ' + made.length + ' order' + (made.length > 1 ? 's' : '') + ' created.'); renderPage();
-        };
-        var acc = $('q-accept'); if (acc) acc.addEventListener('click', function () { confirmInline($('dr-foot'), 'Accept ' + q.no + ' for ' + money(total) + '? One order is created per truck; Sarah sends the purchase agreement for signature.', 'Accept quote', doAccept); });
-        var d = $('q-decline'); if (d) d.addEventListener('click', function () { confirmInline($('dr-foot'), 'Decline ' + q.no + '? Sarah will be told, and you can ask for a revised quote any time.', 'Decline', function () { q.stage = 'declined'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); closeDrawer(); toast(q.no + ' declined.'); renderPage(); }); });
-        var s = $('q-send'); if (s) s.addEventListener('click', function () { q.stage = 'ready'; q.updated = 'Today'; q.lines.forEach(function (l) { if (!l.unitPrice) l.unitPrice = 142500; }); q.validUntil = 'Nov 27'; q.note = 'Available at Richmond; price includes certification and a 90-day warranty.'; S.salesforce.lastSync = 'Just now'; save(); addNotification({ title: q.no + ' quote ready', text: quoteUnits(q) + ' truck' + (quoteUnits(q) > 1 ? 's' : '') + ', ' + money(quoteTotal(q)) + '. Valid until ' + q.validUntil + '.', href: 'orders.html#trucks' }); closeDrawer(); toast('Quote sent to ' + S.user.name + '.'); renderPage(); });
-        var r = $('q-review'); if (r) r.addEventListener('click', function () { q.stage = 'review'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); closeDrawer(); toast('Review started.'); renderPage(); });
-      }
-    });
-  }
-  function flowRequestQuote(stock) {
-    var stocks = Array.isArray(stock) ? stock : (stock ? [stock] : []);
-    var n = Math.max(1, stocks.length);
-    function lineHtml(i, it) { var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : ''; return '<fieldset class="qline" data-line="' + i + '"' + (it ? ' data-stock="' + it.stock + '"' : '') + '><legend>Line ' + i + (it ? ' · stock ' + it.stock + ', ' + esc(it.loc) : '') + '</legend><div class="form-2"><label>New or used<select class="rq-cond">' + ['New', 'Used', 'Either'].map(function (o) { return '<option' + (o === cond ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></label><label>Quantity<input type="text" class="rq-qty" inputmode="numeric" value="1"></label></div><label>Truck<input type="text" class="rq-subject" required placeholder="2026 Freightliner M2 106 · Altec AA55" value="' + (it ? esc(invTitle(it)) : '') + '"></label><label>Spec and must-haves<textarea class="rq-detail" rows="2" placeholder="Chassis, body, aerial or crane, insulation category, color">' + (it ? esc(it.chassis + ' · ' + it.spec) : '') + '</textarea></label></fieldset>'; }
-    openDrawer({
-      kind: 'Request a quote', title: 'Tell Sarah what you need', meta: 'Creates a Salesforce quote with one line per truck configuration',
-      body: '<form class="form" id="rq-form"><div id="rq-lines">' + (stocks.length ? stocks.map(function (it, i) { return lineHtml(i + 1, it); }).join('') : lineHtml(1)) + '</div><button type="button" class="lnk" id="rq-add">Add another truck configuration</button><div class="form-2"><label>Needed by<input type="date" id="rq-by"></label><label>Trade-in<select id="rq-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></form>',
-      foot: '<button type="submit" form="rq-form" class="btn btn-primary">Send request</button><a href="team.html" class="lnk">Call Sarah instead</a>',
-      after: function () {
-        $('rq-add').addEventListener('click', function () { n += 1; var w = document.createElement('div'); w.innerHTML = lineHtml(n); $('rq-lines').appendChild(w.children ? w.children[0] : w); });
-        $('rq-form').addEventListener('submit', function (e) {
-          e.preventDefault();
-          var lines = qsa('.qline').map(function (f, i) { return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, '') + (f.getAttribute('data-stock') ? ' · stock ' + f.getAttribute('data-stock') : ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
-          if (!lines.length) return;
-          var no = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
-          S.quotes.unshift({ no: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: lines, note: ($('rq-by').value ? 'Needed by ' + $('rq-by').value + '. ' : '') + ($('rq-trade').value ? 'Trade-in: ' + $('rq-trade').value + '.' : '') });
-          S.salesforce.lastSync = 'Just now'; save();
-          addNotification({ title: no + ' sent to Sarah', text: lines.length + ' line' + (lines.length > 1 ? 's' : '') + ', ' + quoteUnits(S.quotes[0]) + ' truck' + (quoteUnits(S.quotes[0]) > 1 ? 's' : '') + '. She usually replies within a business day.', href: 'orders.html#trucks' });
-          closeDrawer(); toast('Request ' + no + ' sent to Sarah.'); renderPage();
-          if (document.body.getAttribute('data-page') === 'shop') setTimeout(function () { location.href = 'orders.html#trucks'; }, 900);
-        });
-      }
-    });
-  }
-  var TRUCK_STAGES = ['Requested', 'Quoted', 'Accepted', 'Ordered', 'In production', 'Built, in transit', 'Prep at CTOS', 'Delivered'];
+  var TRUCK_STAGES = ['Requested', 'Quoted', 'Buyer\u2019s order', 'Signed', 'In production', 'Built, in transit', 'Prep at CTOS', 'Delivered'];
   function lineTrucks(q, l) { return S.trucks.filter(function (t) { return t.quote === q.no && t.ql === l.ql; }); }
   function lineStage(q, l, t) {
     if (q.stage === 'declined') return { i: -1, name: 'Declined', when: q.updated };
-    if (t) return { i: 3 + t.stage, name: t.stages[t.stage][0], when: t.stages[t.stage][1] || '', eta: t.eta, where: t.where };
-    if (q.stage === 'accepted') return { i: 2, name: 'Accepted', when: q.updated };
+    if (t) return { i: 3 + t.stage, name: t.stage === 0 ? 'Signed, ordered' : t.stages[t.stage][0], when: t.stages[t.stage][1] || '', eta: t.eta, where: t.where };
+    if (q.stage === 'accepted') return { i: 3, name: 'Signed', when: q.updated };
+    if (q.stage === 'rbo' || q.stage === 'rboSent') return { i: 2, name: q.stage === 'rbo' ? 'Buyer\u2019s order requested' : 'Out for signature', when: q.updated, eta: l.eta };
     if (q.stage === 'ready') return { i: 1, name: 'Quoted', when: q.updated, eta: l.eta };
     return { i: 0, name: q.stage === 'review' ? 'In review at CTOS' : 'Requested', when: q.requested };
   }
@@ -342,9 +276,9 @@
   function renderQuotes() {
     var list = $('quote-rows'); if (!list) return;
     var open = S.quotes.filter(function (q) { return q.stage !== 'accepted' && q.stage !== 'declined'; });
-    var ready = open.filter(function (q) { return q.stage === 'ready'; }).length, building = S.trucks.filter(function (t) { return t.stage < 4; }).length;
+    var ready = open.filter(function (q) { return q.stage === 'ready' || q.stage === 'rboSent'; }).length, building = S.trucks.filter(function (t) { return t.stage < 4; }).length;
     $('tab-trucks').querySelector('b').textContent = building + ' building · ' + open.length + ' quote' + (open.length === 1 ? '' : 's');
-    $('quotes-note').innerHTML = (ready ? '<span class="priority high">' + ready + ' ready for your decision</span> · ' : '') + sfStamp();
+    $('quotes-note').innerHTML = (ready ? '<span class="priority high">' + ready + ' waiting on you</span> · ' : '') + sfStamp();
     list.innerHTML = S.quotes.length ? S.quotes.map(function (q) {
       var st = QSTAGE[q.stage], total = quoteTotal(q);
       var lines = q.lines.map(function (l) {
@@ -352,12 +286,68 @@
         if (!ts.length) { var s0 = lineStage(q, l, null); return '<div class="ql"><div class="ql-main"><strong>' + esc(l.ql) + ' · ' + (l.qty > 1 ? l.qty + ' × ' : '') + esc(l.spec) + '</strong><span>' + esc(l.detail) + (l.unitPrice ? ' · ' + money(l.unitPrice) + (l.qty > 1 ? ' each' : '') : '') + (l.items && l.items.length > 1 ? ' · ' + (l.items.length - 1) + ' option' + (l.items.length > 2 ? 's' : '') : '') + '</span></div><div class="ql-track">' + trackerHtml(s0) + '</div></div>'; }
         return ts.map(function (t) { var s1 = lineStage(q, l, t); return '<div class="ql"><div class="ql-main"><strong>' + esc(l.ql) + ' · <button type="button" class="row-btn" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button> · ' + esc(l.spec) + '</strong><span>' + esc(t.detail) + ' · ' + money(t.price) + (l.items && l.items.length > 1 ? ' · ' + (l.items.length - 1) + ' option' + (l.items.length > 2 ? 's' : '') : '') + ' · ' + esc(t.where) + '</span></div><div class="ql-track">' + trackerHtml(s1) + '</div></div>'; }).join('');
       }).join('');
-      return '<article class="quote' + (q.stage === 'ready' ? ' due' : '') + '"><div class="q-head"><div><button type="button" class="row-btn q-no" data-quote="' + q.no + '" aria-haspopup="dialog">' + q.no + '</button><span class="q-meta">' + quoteUnits(q) + ' truck' + (quoteUnits(q) > 1 ? 's' : '') + ' on ' + q.lines.length + ' line' + (q.lines.length > 1 ? 's' : '') + ' · ' + esc(q.owner) + ' · updated ' + esc(q.updated) + (q.validUntil ? ' · valid until ' + esc(q.validUntil) : '') + (q.terms ? ' · ' + esc(q.terms.financing.split(' · ')[0]) + (q.terms.po ? ' · PO ' + esc(q.terms.po) : '') : '') + (q.invoice ? ' · invoice ' + esc(q.invoice) : '') + '</span></div><div class="q-side">' + statusHtml(st[1], st[0]) + '<b>' + (total ? money(total) : '<span class="muted">Pricing pending</span>') + '</b></div></div><div class="q-lines">' + lines + '</div></article>';
+      return '<article class="quote' + (q.stage === 'ready' || q.stage === 'rboSent' ? ' due' : '') + '"><div class="q-head"><div><a class="row-btn q-no" href="quote.html?q=' + q.no + '">' + q.no + '</a><span class="q-meta">' + quoteUnits(q) + ' truck' + (quoteUnits(q) > 1 ? 's' : '') + ' on ' + q.lines.length + ' line' + (q.lines.length > 1 ? 's' : '') + ' · ' + esc(q.owner) + ' · updated ' + esc(q.updated) + (q.validUntil ? ' · valid until ' + esc(q.validUntil) : '') + (q.terms ? ' · ' + esc(q.terms.financing.split(' · ')[0]) + (q.terms.po ? ' · PO ' + esc(q.terms.po) : '') : '') + (q.invoice ? ' · invoice ' + esc(q.invoice) : '') + '</span></div><div class="q-side">' + statusHtml(st[1], st[0]) + '<b>' + (total ? money(total) : '<span class="muted">Pricing pending</span>') + '</b><a href="quote.html?q=' + q.no + '" class="btn btn-ghost sm">' + (!isEmployee() && q.stage === 'ready' ? 'Review quote' : !isEmployee() && q.stage === 'rboSent' ? 'Sign buyer\u2019s order' : isEmployee() && q.stage === 'rbo' ? 'Send buyer\u2019s order' : 'Open quote') + '</a></div></div><div class="q-lines">' + lines + '</div></article>';
     }).join('') : emptyHtml('No truck quotes yet. Pick trucks in the Shop and Sarah replies here.');
-    qsa('[data-quote]').forEach(function (b) { b.addEventListener('click', function () { var q = S.quotes.filter(function (x) { return x.no === b.getAttribute('data-quote'); })[0]; flowQuote(q, b.closest('.quote')); }); });
     qsa('[data-truck]').forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.quote')); }); });
     qsa('[data-flow-quote]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowRequestQuote(); }); });
   }
+
+
+  /* ---------- quote page ---------- */
+  renderers.quote = function () {
+    var qno = (location.search.match(/[?&]q=([A-Za-z0-9-]+)/) || [])[1];
+    var q = S.quotes.filter(function (x) { return x.no === qno; })[0], head = $('q-head');
+    if (!q) { head.innerHTML = '<div><h1>Quote not found</h1><p class="finding">That quote is not on your account. <a href="orders.html#trucks">See your quotes</a>.</p></div>'; return; }
+    var emp = isEmployee(), total = quoteTotal(q), units = quoteUnits(q), st = QSTAGE[q.stage];
+    document.title = q.no + ' — CTOS One';
+    var acts = '', second = '';
+    if (!emp) {
+      if (q.stage === 'ready') acts = '<button type="button" class="btn btn-primary" id="q-rbo">Request the buyer\u2019s order<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button type="button" class="lnk" id="q-changes">Ask for changes</button><button type="button" class="lnk" id="q-decline">Decline</button>';
+      else if (q.stage === 'rbo') acts = '<span class="wo-note">Sarah is preparing the buyer\u2019s order in Salesforce. It arrives by email for e-signature, usually the same day.</span>';
+      else if (q.stage === 'rboSent') acts = '<a href="#" class="btn btn-primary" id="q-sign">Open the buyer\u2019s order to sign<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><span class="wo-note">Sent ' + esc(q.updated) + ' to ' + esc((q.terms || defaultTerms()).payer.split(' · ')[0]) + ' · DocuSign</span>';
+      if (Q_ORDER[q.stage] >= 2 && q.stage !== 'declined') second = (q.stage === 'accepted' ? (q.invoice ? '<a href="billing.html" class="lnk">Invoice ' + esc(q.invoice) + '</a>' : '<button type="button" class="lnk" id="q-invoice">Request an invoice</button>') : '') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>' + (q.rboDoc ? '<a href="#" class="lnk">Buyer\u2019s order PDF</a>' : '');
+    } else {
+      if (q.stage === 'review') acts = '<button type="button" class="btn btn-primary" id="q-send">Send quote to customer</button>';
+      else if (q.stage === 'requested') acts = '<button type="button" class="btn btn-primary" id="q-review">Start review</button>';
+      else if (q.stage === 'rbo') acts = '<button type="button" class="btn btn-primary" id="q-rbo-send">Generate buyer\u2019s order in Conga and send</button>';
+      else if (q.stage === 'rboSent') acts = '<button type="button" class="btn btn-primary" id="q-rbo-signed">Record the signed buyer\u2019s order</button>';
+      else acts = '<a href="#" class="btn btn-ghost">Open in Salesforce</a>';
+    }
+    var finding = q.stage === 'ready' ? 'Sarah priced this on ' + q.updated + ' and it is valid until ' + q.validUntil + '. When you are ready, request the buyer\u2019s order: Sarah generates it from this quote and sends it for e-signature. Nothing is ordered until that is signed.' : q.stage === 'rbo' ? 'Buyer\u2019s order requested ' + q.updated + '. Sarah generates it in Salesforce and it arrives for e-signature.' : q.stage === 'rboSent' ? 'The buyer\u2019s order went out for signature on ' + q.updated + '. Signing it places the order; each truck then gets its own build status below.' : q.stage === 'accepted' ? 'Buyer\u2019s order signed ' + q.updated + '. Each truck below has its own build status; expected dates update as the build moves.' : q.stage === 'declined' ? 'Declined ' + q.updated + '. Ask Sarah for a revised quote any time.' : q.stage === 'review' ? 'Sarah is pricing this now and usually replies within a business day.' : 'Sent to Sarah ' + q.requested + '. She usually replies within a business day.';
+    head.innerHTML = '<div><h1>' + q.no + ' <span class="status ' + st[1] + ' h-status">' + st[0] + '</span></h1><p class="finding">' + units + ' truck' + (units > 1 ? 's' : '') + ' on ' + q.lines.length + ' line' + (q.lines.length > 1 ? 's' : '') + '. ' + esc(finding) + (q.note && q.stage !== 'accepted' ? ' ' + esc(q.note) : '') + '</p></div>' +
+      '<div class="side">' + acts + '<span class="q-second">' + second + '</span></div>';
+    $('q-stats').innerHTML = [[total ? money(total) : '—', '', 'Quote total', 'Before tax, FET and title'], [units + '', '', 'Trucks', q.lines.length + ' configuration' + (q.lines.length > 1 ? 's' : '')], [q.stage === 'accepted' ? q.updated : (q.validUntil || q.updated), '', q.stage === 'accepted' ? 'Signed' : q.validUntil ? 'Valid until' : 'Updated', 'Owner ' + q.owner], [(q.terms || defaultTerms()).financing.split(' · ')[0], '', 'Financing', (q.terms || defaultTerms()).lienholder || 'No lienholder']].map(function (s) { return '<div class="stat-c"><div class="v' + (s[0].length > 12 ? ' v-sm' : '') + '">' + esc(s[0]) + '</div><div class="l">' + esc(s[2]) + '</div><div class="d">' + esc(s[3]) + '</div></div>'; }).join('');
+    $('q-lines').innerHTML = q.lines.map(function (l) {
+      var ts = lineTrucks(q, l), pk = linePackage(l);
+      var trackers = ts.length ? ts.map(function (t) { var s1 = lineStage(q, l, t); return '<div class="ql-truck"><div><strong><button type="button" class="row-btn" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button></strong><span>' + esc(t.where) + ' · expected ' + esc(t.eta) + '</span></div><div class="ql-track">' + trackerHtml(s1) + '</div></div>'; }).join('') : '<div class="ql-truck"><div><strong>' + (l.qty > 1 ? l.qty + ' trucks' : '1 truck') + '</strong><span>' + (l.eta ? 'Expected ' + esc(l.eta) : 'Lead time on the quote') + '</span></div><div class="ql-track">' + trackerHtml(lineStage(q, l, null)) + '</div></div>';
+      return '<section class="panel"><div class="section-head"><h3>' + esc(l.ql) + ' · ' + esc(l.spec) + '</h3><span class="head-note">' + (l.unitPrice ? money(l.unitPrice) + (l.qty > 1 ? ' each × ' + l.qty : '') : 'Pricing pending') + '</span></div><p class="side-copy q-detail">' + esc(l.detail) + '</p><div class="q-trucks">' + trackers + '</div>' + (l.items && l.items.length ? '<h4 class="dr-sub q-items-h">Product and configured options</h4>' + lineItemsHtml(l) : '') + '</section>';
+    }).join('');
+    $('q-terms').innerHTML = termsHtml(q);
+    $('q-progress').innerHTML = '<ol class="stages v">' + stagesHtml(quoteStagesList(q), Q_ORDER[q.stage]) + '</ol>';
+    $('q-sf').innerHTML = '<dl class="dr-facts"><dt>Quote</dt><dd class="mono">' + q.sfId + '</dd><dt>Lines</dt><dd>' + q.lines.map(function (l) { return l.ql; }).join(', ') + '</dd><dt>Synced</dt><dd>' + esc(S.salesforce.lastSync) + '</dd></dl><p class="form-note">This quote and its lines are Salesforce records; the portal reads them and writes your decisions back.</p>';
+    var tb = $('q-terms-btn'); if (tb) { tb.hidden = emp; once(tb, 'click', function () { flowQuoteTerms(q, function () { closeDrawer(); renderPage(); }); }); }
+    qsa('[data-truck]').forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.panel')); }); });
+    var placeOrders = function () {
+      q.stage = 'accepted'; q.updated = 'Today';
+      var made = [];
+      q.lines.forEach(function (l) { var mine = []; for (var i = 0; i < l.qty; i++) { var no = 'T-' + (2066 + S.trucks.length + 1); S.trucks.push({ no: no, quote: q.no, ql: l.ql, spec: l.spec, detail: l.detail, price: l.unitPrice, ordered: 'Today', eta: l.eta || 'TBD', where: 'Awaiting build slot', stage: 0, stages: [['Ordered', 'Today'], ['In production', ''], ['Built, in transit', ''], ['Prep at CTOS', ''], ['Delivery', l.eta || '']] }); made.push(no); mine.push(no); } l.orderNo = mine.join(', '); });
+      q.note = 'Buyer\u2019s order signed. Orders ' + made.join(', ') + '.'; q.rboDoc = 'RBO-' + q.no.replace('Q-', '') + '.pdf';
+      S.salesforce.lastSync = 'Just now'; save();
+      addNotification({ title: q.no + ' buyer\u2019s order signed', text: money(total) + '. Orders ' + made.join(', ') + ' are building; track each one on the quote.', href: 'quote.html?q=' + q.no });
+      toast('Signed. ' + made.length + ' order' + (made.length > 1 ? 's' : '') + ' placed.'); renderPage();
+    };
+    var side = head.querySelector('.side');
+    var rb = $('q-rbo'); if (rb) rb.addEventListener('click', function () { confirmInline(side, 'Ask Sarah for the buyer\u2019s order on ' + q.no + ', ' + money(total) + '? She generates it from this quote in Salesforce and sends it for e-signature; the order is placed when you sign.', 'Request buyer\u2019s order', function () { q.stage = 'rbo'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); addNotification({ title: q.no + ' buyer\u2019s order requested', text: 'Sarah is generating it from the quote. It arrives by email for e-signature.', href: 'quote.html?q=' + q.no }); toast('Buyer\u2019s order requested.'); renderPage(); }); });
+    var ch = $('q-changes'); if (ch) ch.addEventListener('click', function () { flowTicket({ subject: 'Changes to ' + q.no, text: 'What should be different on this quote? Sarah revises it in Salesforce and the new version shows here.' }); });
+    var d = $('q-decline'); if (d) d.addEventListener('click', function () { confirmInline(side, 'Decline ' + q.no + '? Sarah will be told, and you can ask for a revised quote any time.', 'Decline', function () { q.stage = 'declined'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); toast(q.no + ' declined.'); renderPage(); }); });
+    var sg = $('q-sign'); if (sg) sg.addEventListener('click', function (e) { e.preventDefault(); confirmInline(side, 'This opens the DocuSign envelope for the buyer\u2019s order. For the demo, signing here records the signature on ' + q.no + ' and places the orders.', 'Sign as ' + personaInfo().name, placeOrders); });
+    var inv = $('q-invoice'); if (inv) inv.addEventListener('click', function () { confirmInline(side, 'Issue an invoice for ' + q.no + ', ' + money(total) + ' before tax and title?', 'Request invoice', function () { requestInvoice(q); }); });
+    var fin = $('q-finance'); if (fin) fin.addEventListener('click', function () { flowCreditApp({ financing: true, quote: q, amount: total }); });
+    var rs = $('q-rbo-send'); if (rs) rs.addEventListener('click', function () { q.stage = 'rboSent'; q.updated = 'Today'; q.rboSentOn = 'Today'; S.salesforce.lastSync = 'Just now'; save(); addNotification({ title: q.no + ' buyer\u2019s order ready to sign', text: 'Sent by DocuSign to ' + (q.terms || defaultTerms()).payer.split(' · ')[0] + '. Open the quote to sign.', href: 'quote.html?q=' + q.no }); toast('Buyer\u2019s order generated in Conga and sent for signature.'); renderPage(); });
+    var rg = $('q-rbo-signed'); if (rg) rg.addEventListener('click', function () { confirmInline(side, 'Record the signed buyer\u2019s order for ' + q.no + ' and create the orders?', 'Record signature', placeOrders); });
+    var sd = $('q-send'); if (sd) sd.addEventListener('click', function () { q.stage = 'ready'; q.updated = 'Today'; q.lines.forEach(function (l) { if (!l.unitPrice) l.unitPrice = 142500; }); q.validUntil = 'Nov 27'; q.note = 'Available at Richmond; price includes certification and a 90-day warranty.'; S.salesforce.lastSync = 'Just now'; save(); addNotification({ title: q.no + ' quote ready', text: quoteUnits(q) + ' truck' + (quoteUnits(q) > 1 ? 's' : '') + ', ' + money(quoteTotal(q)) + '. Valid until Nov 27.', href: 'quote.html?q=' + q.no }); toast('Quote sent to the customer.'); renderPage(); });
+    var rv = $('q-review'); if (rv) rv.addEventListener('click', function () { q.stage = 'review'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); toast('Review started.'); renderPage(); });
+  };
 
   /* ---------- employee view: account notes and internal actions ---------- */
   function renderEmployeeHome() {
@@ -748,7 +738,8 @@
       S.invoices.forEach(function (i) { items.push({ t: i.no, s: 'Unit #' + i.unit + ' · ' + i.desc + ' · ' + money(i.amount), h: 'billing.html', k: 'Invoice' }); });
       S.workorders.forEach(function (w) { items.push({ t: 'Work order · Unit #' + w.unit, s: w.where, h: 'service.html', k: 'Service' }); });
       (S.inventory || []).forEach(function (it) { items.push({ t: invTitle(it) + ' · ' + it.stock, s: (it.sale ? 'For sale' : 'For rent') + ' · ' + it.loc, h: 'shop.html', k: 'Buy & Rent' }); });
-      (S.builds || []).forEach(function (b) { items.push({ t: b.name, s: b.spec, h: 'orders.html#trucks', k: 'Preferred build' }); });
+      (S.builds || []).forEach(function (b) { items.push({ t: b.name, s: b.spec, h: 'shop.html#trucks', k: 'Preferred build' }); });
+      S.quotes.forEach(function (q) { items.push({ t: q.no + ' · ' + QSTAGE[q.stage][0], s: q.lines.map(function (l) { return l.spec; }).join(' · '), h: 'quote.html?q=' + q.no, k: 'Quote' }); });
       S.team.forEach(function (p) { items.push({ t: p.name, s: p.role, h: 'team.html', k: 'Team' }); });
       S.reports.forEach(function (r) { items.push({ t: r.name, s: r.period, h: 'reports.html#' + r.id, k: 'Report' }); });
       S.quotes.forEach(function (q) { items.push({ t: q.no + ' · ' + q.lines.map(function (l) { return l.spec; }).join(', '), s: QSTAGE[q.stage][0], h: 'orders.html#trucks', k: 'Quote' }); });
@@ -1084,10 +1075,11 @@
     });
   }
 
-  function flowTicket() {
+  function flowTicket(opts) {
+    opts = opts || {};
     openDrawer({
-      kind: 'New support request', title: 'How can we help?', meta: 'Replies within one business hour, 6:00 AM to 10:00 PM',
-      body: '<form class="form" id="tk-form"><label>Subject<input type="text" id="t-sub" required placeholder="What is going on"></label><label>Related to<select id="t-rel"><option>Portal or account</option><option>Telematics</option><option>A vehicle</option><option>An order</option><option>An invoice</option></select></label><label>Details<textarea id="t-body" rows="4" required placeholder="Unit numbers, order numbers, what you expected"></textarea></label></form>',
+      kind: opts.subject ? 'Message to Sarah' : 'New support request', title: opts.subject ? opts.subject : 'How can we help?', meta: 'Replies within one business hour, 6:00 AM to 10:00 PM',
+      body: '<form class="form" id="tk-form"><label>Subject<input type="text" id="t-sub" required placeholder="What is going on" value="' + esc(opts.subject || '') + '"></label><label>Related to<select id="t-rel"><option>Portal or account</option><option>Telematics</option><option>A vehicle</option><option>An order</option><option>An invoice</option></select></label><label>Details<textarea id="t-body" rows="4" required placeholder="Unit numbers, order numbers, what you expected"></textarea></label></form>',
       foot: '<button type="submit" form="tk-form" class="btn btn-primary">Send request</button><a href="tel:+18005550199" class="lnk">Call support</a>',
       after: function () {
         $('tk-form').addEventListener('submit', function (e) {
@@ -1692,7 +1684,7 @@
         var qno = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
         S.quotes.unshift({ no: qno, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: tk.map(function (it, i) { return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: invTitle(it), detail: (it.cond === 'new' ? 'New' : 'Used') + ' · ' + it.chassis + ' · ' + it.spec + ' · stock ' + it.stock, qty: 1, unitPrice: 0, eta: '' }; }), note: ($('t-by').value ? 'Needed by ' + $('t-by').value + '. ' : '') + ($('t-trade').value ? 'Trade-in: ' + $('t-trade').value + '.' : '') });
         S.salesforce.lastSync = 'Just now';
-        addNotification({ title: qno + ' sent to Sarah', text: tk.length + ' truck' + (tk.length > 1 ? 's' : '') + ' from stock. She usually replies within a business day.', href: 'orders.html#trucks' });
+        addNotification({ title: qno + ' sent to Sarah', text: tk.length + ' truck' + (tk.length > 1 ? 's' : '') + ' from stock. She usually replies within a business day.', href: 'quote.html?q=' + qno });
         made.push('quote request ' + qno); T.trucks = [];
       }
       var rl = rentals();
