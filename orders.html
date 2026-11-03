@@ -127,24 +127,9 @@
       <section class="view" id="view-trucks" role="tabpanel" aria-labelledby="tab-trucks" hidden>
         <div class="stack">
         <section class="panel">
-          <div class="section-head"><h3>Quotes</h3><span class="head-note" id="quotes-note"></span></div>
-          <div class="table-scroll">
-            <table class="fleet orders">
-              <thead><tr><th scope="col">Quote</th><th scope="col">Configurations</th><th scope="col" class="num">Lines</th><th scope="col" class="num">Trucks</th><th scope="col">Stage</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Updated</th></tr></thead>
-              <tbody id="quote-rows"></tbody>
-            </table>
-          </div>
-          <div class="table-foot"><span>Each quote line is one truck configuration. Accepting a quote creates one order per truck. Pricing and terms come from Sarah through Salesforce.</span><a href="shop.html#trucks">Shop trucks</a></div>
-        </section>
-                <section class="panel">
-          <div class="section-head"><h3>On order</h3><span class="head-note" id="trucks-note"></span></div>
-          <div class="table-scroll">
-            <table class="fleet orders">
-              <thead><tr><th scope="col">Order</th><th scope="col">Truck</th><th scope="col">Placed</th><th scope="col">Build status</th><th scope="col" class="num">Price</th><th scope="col" class="num">Expected</th></tr></thead>
-              <tbody id="truck-rows"></tbody>
-            </table>
-          </div>
-          <div class="table-foot"><span>Select an order for the build sheet and schedule · your sales contact is Sarah Mitchell</span><a href="team.html">Contact Sarah</a></div>
+          <div class="section-head"><h3>Truck quotes and orders</h3><span class="head-note" id="quotes-note"></span></div>
+          <div class="quotes" id="quote-rows"></div>
+          <div class="table-foot"><span>A quote is the order. Each line is one truck configuration; each truck on a line has its own build status once the quote is accepted. Pricing and terms come from Sarah through Salesforce.</span><a href="shop.html#trucks">Shop trucks</a></div>
         </section>
         </div>
       </section>
