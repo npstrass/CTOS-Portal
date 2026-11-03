@@ -1558,3 +1558,11 @@ table.orders th:nth-child(2) { width: 32%; }
   .inv-main { order: 1; width: 100%; }
   .inv-price { max-width: none; flex: 1 1 100%; text-align: left; }
 }
+
+/* Inventory photos: 16:10 frame, grey backdrop; a line silhouette stands in until a real photo exists at assets/img/<stock>.jpg */
+.inv-photo { margin: -14px -16px 10px; aspect-ratio: 16 / 9; background: #F2F3F5; border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; }
+.inv-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.inv-photo img.ph { object-fit: contain; }
+.dr-photo { margin: 0 0 16px; border: 1px solid var(--line); border-radius: var(--radius); }
+.inv-where strong { white-space: nowrap; }
+.inv-price { max-width: 56%; }
