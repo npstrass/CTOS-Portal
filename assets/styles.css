@@ -1868,3 +1868,6 @@ table.ql-items { width: 100%; }
   table.ql-items th:nth-child(3), table.ql-items td:nth-child(3), table.ql-items th:nth-child(4), table.ql-items td:nth-child(4), table.ql-items th:nth-child(5), table.ql-items td:nth-child(5) { display: none; }
   table.ql-items tr.pkg td[colspan] { display: table-cell; }
 }
+.lbl-note { display: block; font-weight: 400; font-size: 0.74rem; color: var(--muted); margin: -2px 0 4px; }
+.pb-opts .check small { display: block; font-size: 0.72rem; color: var(--muted); }
+.inv-stock { white-space: nowrap; }
