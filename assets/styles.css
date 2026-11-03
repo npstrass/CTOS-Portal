@@ -1620,3 +1620,24 @@ label.up-btn:hover { border-color: var(--ink); }
 .g-thumb.on { opacity: 1; border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .g-thumb:hover { opacity: 1; }
 .g-cap { margin: 6px 0 0; font-size: 0.78rem; color: var(--muted); }
+
+/* Shop: parts catalog rows and the request tray */
+.sp-group { padding: 14px 14px 4px; margin: 0; }
+.cart-picks .row.fig.li.part { grid-template-columns: minmax(0, 1fr) auto auto; }
+.part-price { text-align: right; white-space: nowrap; }
+.part-price b { display: block; font-weight: 500; font-size: 0.92rem; }
+.part-price s { font-size: 0.76rem; color: var(--muted); }
+#sp-reorder .row.fig.li.part, #sp-recent .row.fig.li.part { grid-template-columns: minmax(0, 1fr) auto; }
+#sp-reorder .part-price { display: none; }
+.tray-form { margin: 10px 0 18px; }
+.rent-line { align-items: start; }
+.rent-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.rent-opts label { display: flex; flex-direction: column; gap: 3px; font-size: 0.74rem; color: var(--muted); }
+.rent-opts input, .rent-opts select { height: 32px; padding: 0 8px; font: inherit; font-size: 0.82rem; color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); min-width: 0; }
+.shop-finding strong { color: var(--ink); }
+@media (max-width: 900px) { .rent-opts { grid-template-columns: 1fr 1fr; } }
+.drawer .row.fig.li.tray-line { grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; }
+.drawer .tray-line .lnk { font-size: 0.8rem; }
+.rent-opts { margin: 0 0 12px; padding: 0 14px; }
+.tray-form .form-2 select, .tray-form .form-2 input { width: 100%; min-width: 0; }
+.tray-form .form-2 label { min-width: 0; }

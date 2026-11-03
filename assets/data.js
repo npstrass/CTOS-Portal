@@ -222,7 +222,7 @@ window.CTOS_SEED = {
     { id: 'n1', level: 'high', read: false, title: 'Unit #1058 · Active fault code', text: 'Check-engine fault (SPN 3226) reported near Stafford, VA.', when: '14m', href: 'fleet.html#u1058' },
     { id: 'n2', level: 'med', read: false, title: '3 units with open work orders', text: 'Units #1104, #1081 and #1130. Priya will call to confirm the work.', when: '2h', href: 'service.html' },
     { id: 'n3', level: 'med', read: false, title: 'Campaign notice: Unit #1058', text: 'Terex XT55 leveling cable bulletin, plus the steering gear recall. Both can be done with the diagnostic.', when: 'Yesterday', href: 'service.html' },
-    { id: 'n4', level: '', read: true, title: 'Order 48213 shipped', text: 'Brake pads and rotors for Unit #1076 arrive Wednesday.', when: 'Yesterday', href: 'parts.html#parts' },
+    { id: 'n4', level: '', read: true, title: 'Order 48213 shipped', text: 'Brake pads and rotors for Unit #1076 arrive Wednesday.', when: 'Yesterday', href: 'orders.html#parts' },
     { id: 'n5', level: '', read: true, title: 'Invoice INV-20461 is ready', text: 'Unit #1110 PM service, $742.00, due Nov 15.', when: '2d', href: 'billing.html' },
     { id: 'n6', level: '', read: true, title: 'Sarah Mitchell left a note', text: '"Confirmed the DOT inspection for #1093 on Nov 2. Let me know if anything changes."', when: '3d', href: 'team.html' }
   ],
