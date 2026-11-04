@@ -1215,11 +1215,25 @@
     return list;
   }
   function renderHero(due) {
-    var heroes = homeHeroes(due), i = 0;
+    var heroes = homeHeroes(due), i = 0, timer = null, paused = false, INTERVAL = 8000;
     try { i = Math.min(heroes.length - 1, Math.max(0, parseInt(sessionStorage.getItem('ctos-hero') || '0', 10) || 0)); } catch (e) {}
     var cta = $('feat-cta'); if (!cta) return;
+    var copy = cta.closest('.featured-copy'), pager = copy.querySelector('.feat-pager');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-    function show(k) {
+    // Every variant gets the same height: measure the tallest one at this width and reserve it.
+    function sizeTo() {
+      if (!copy.cloneNode || !copy.parentNode) return; var ghost = copy.cloneNode(true); ghost.className = 'featured-copy'; ghost.setAttribute('aria-hidden', 'true');
+      ghost.style.cssText = 'position:absolute;left:0;top:0;width:' + copy.offsetWidth + 'px;visibility:hidden;pointer-events:none;min-height:0';
+      copy.parentNode.appendChild(ghost); var max = 0;
+      heroes.forEach(function (h) {
+        ghost.querySelector('#feat-kicker').textContent = h.kicker; ghost.querySelector('#feat-title').textContent = h.title; ghost.querySelector('#feat-body').textContent = h.body;
+        ghost.querySelector('#feat-cta').innerHTML = esc(h.cta) + arrow; ghost.querySelector('#feat-link').textContent = h.link;
+        max = Math.max(max, ghost.offsetHeight);
+      });
+      ghost.remove(); copy.style.minHeight = max + 'px';
+    }
+    function show(k, byUser) {
       i = (k + heroes.length) % heroes.length; var h = heroes[i];
       try { sessionStorage.setItem('ctos-hero', i); } catch (e) {}
       $('feat-kicker').textContent = h.kicker; $('feat-title').textContent = h.title; $('feat-body').textContent = h.body;
@@ -1227,12 +1241,27 @@
       var ln = $('feat-link'); ln.textContent = h.link; ln.setAttribute('href', h.href);
       $('feat-dots').innerHTML = heroes.map(function (x, j) { return '<button type="button" class="feat-dot' + (j === i ? ' on' : '') + '" data-hero="' + j + '" aria-label="' + esc(x.kicker) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
       $('feat-count').textContent = (i + 1) + ' of ' + heroes.length;
-      qsa('#feat-dots [data-hero]').forEach(function (d) { d.addEventListener('click', function () { show(+d.getAttribute('data-hero')); }); });
-      var copy = cta.closest('.featured-copy'); if (copy) { copy.classList.remove('swap'); void copy.offsetWidth; copy.classList.add('swap'); }
+      qsa('#feat-dots [data-hero]').forEach(function (d) { d.addEventListener('click', function () { show(+d.getAttribute('data-hero'), true); }); });
+      copy.classList.remove('swap'); void copy.offsetWidth; copy.classList.add('swap');
+      if (byUser) stopAuto(); else restartAuto();
     }
-    once($('feat-prev'), 'click', function () { show(i - 1); });
-    once($('feat-next'), 'click', function () { show(i + 1); });
-    show(i);
+    // Auto-rotate until the reader touches the pager, pausing while the pointer or focus is on the hero.
+    var auto = !reduce && typeof window.requestAnimationFrame === 'function';
+    var ticking = false;
+    function tick() { timer = null; if (paused || document.hidden || ticking) return; ticking = true; show(i + 1); ticking = false; }
+    function restartAuto() { clearTimeout(timer); timer = null; if (!auto) return; pager.classList.remove('auto'); void pager.offsetWidth; pager.classList.add('auto'); timer = setTimeout(tick, INTERVAL); }
+    function stopAuto() { auto = false; clearTimeout(timer); timer = null; pager.classList.remove('auto'); }
+    function hold(on) { paused = on; pager.classList.toggle('hold', on); if (!on && auto && !timer) restartAuto(); }
+    var feat = copy.closest('.featured');
+    once(feat, 'mouseenter', function () { hold(true); });
+    once(feat, 'mouseleave', function () { hold(false); });
+    once(feat, 'focusin', function () { hold(true); });
+    once(feat, 'focusout', function () { hold(false); });
+    once(document, 'visibilitychange', function () { if (!document.hidden && auto && !timer && !paused) restartAuto(); });
+    once($('feat-prev'), 'click', function () { show(i - 1, true); });
+    once($('feat-next'), 'click', function () { show(i + 1, true); });
+    var rt; once(window, 'resize', function () { clearTimeout(rt); rt = setTimeout(sizeTo, 150); });
+    sizeTo(); show(i);
   }
 
   renderers.fleet = function () {

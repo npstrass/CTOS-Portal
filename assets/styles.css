@@ -280,7 +280,7 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.1;
-    max-width: 18ch;
+    max-width: 22ch;
   }
   .featured p {
     margin-top: 12px;
@@ -1957,7 +1957,7 @@ table.ql-items { width: 100%; }
 .featured .feat-actions .btn { margin-top: 0; }
 .feat-link { color: rgba(255,255,255,0.78); font-size: 0.92rem; font-weight: 500; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 4px; }
 .feat-link:hover { color: #fff; text-decoration-color: #fff; }
-.feat-pager { display: flex; align-items: center; gap: 6px; margin-top: 30px; }
+.feat-pager { display: flex; align-items: center; gap: 6px; margin-top: 24px; }
 .feat-arrow { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.22); background: transparent; color: rgba(255,255,255,0.75); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .feat-arrow:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .feat-arrow svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -1971,3 +1971,11 @@ table.ql-items { width: 100%; }
 .featured-copy.swap h2 { animation-delay: .03s; } .featured-copy.swap p { animation-delay: .06s; } .featured-copy.swap .feat-actions { animation-delay: .09s; }
 @media (prefers-reduced-motion: reduce) { .featured-copy.swap * { animation: none; } }
 @media (max-width: 900px) { .feat-pager { margin-top: 22px; } .feat-actions { gap: 16px; } }
+
+/* auto-rotate: the active dot fills over the interval, freezes while the hero is hovered or focused */
+.feat-dot { position: relative; overflow: hidden; }
+.feat-dot.on::after { content: ""; position: absolute; inset: 0; width: 0; background: var(--red); border-radius: inherit; }
+.feat-pager.auto .feat-dot.on::after { animation: feat-fill 8s linear forwards; }
+.feat-pager.auto.hold .feat-dot.on::after { animation-play-state: paused; }
+@keyframes feat-fill { from { width: 0; } to { width: 100%; } }
+.featured-copy { transition: min-height .2s ease; }
