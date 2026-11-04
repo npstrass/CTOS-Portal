@@ -1176,9 +1176,64 @@
     $('home-alerts').innerHTML = alerts.map(function (a) { return '<a href="' + a.href + '" class="row alert">' + icons[a.icon] + '<div><strong>' + esc(a.title) + '<span class="priority ' + a.level + '">' + kinds[a.level] + '</span></strong><span>' + esc(a.text) + '</span></div>' + chev + '</a>'; }).join('');
     $('home-appts').innerHTML = S.appointments.length ? apptRows(S.appointments.slice(0, 4), false) : emptyHtml('No service booked. Everything is inside its interval.');
     qsa('[data-stat-due]').forEach(function (n) { n.textContent = due; });
+    renderHero(due);
     qsa('[data-stat-shop]').forEach(function (n) { n.textContent = S.fleetCounts.shop; });
-    qsa('[data-flow-schedule]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowSchedule({}); }); });
   };
+
+  // ----- Home hero: one message at a time, chosen from what is actually going on in the account -----
+  function homeHeroes(due) {
+    var open = S.invoices.filter(function (i) { return i.status === 'open'; });
+    var openTotal = sum(open.map(function (i) { return i.amount; }));
+    var soonest = open.slice().sort(function (a, b) { return a.amount - b.amount; })[0];
+    var rentDue = S.rentals.filter(function (r) { return r.state === 'due'; })[0] || S.rentals[0];
+    var q = S.quotes.filter(function (x) { return x.stage === 'ready'; })[0];
+    var qTrucks = q ? sum(q.lines.map(function (l) { return l.qty || 1; })) : 0;
+    var inv = S.inventory.filter(function (it) { return it.stock === 'S-77122'; })[0] || S.inventory[0];
+    var pct = S.pricing.truckPct || 0;
+    var list = [];
+    list.push({ id: 'service', kicker: 'Service · due this month', title: 'Three units are due before storm season.',
+      body: 'Book preventive service for the three units due this month before storm season. Two have dielectric tests due in the same window; Luis can do both in one visit at Fredericksburg.',
+      cta: 'Book the three units', run: function () { flowSchedule({}); }, link: 'See what’s due', href: 'service.html' });
+    if (q) list.push({ id: 'quote', kicker: 'Quote ' + q.no + ' · ready', title: 'Your quote for ' + qTrucks + ' new aerials is ready.',
+      body: 'Sarah priced ' + q.lines.map(function (l) { return (l.qty > 1 ? l.qty + ' × ' : '') + l.spec.replace(/^\d{4} /, ''); }).join(' and ') + ' with your fleet discount and delivery to Stafford. Pricing holds through ' + q.validUntil + '; the buyer’s order comes from Sarah when you’re ready.',
+      cta: 'Review the quote', href2: 'quote.html?q=' + q.no, link: 'Ask Sarah a question', href: 'team.html' });
+    if (rentDue) list.push({ id: 'rental', kicker: 'Rental ' + rentDue.unit + ' · ' + (rentDue.state === 'due' ? 'due back this week' : 'on rent'), title: rentDue.unit + ' is due back ' + rentDue.due.replace(/^[A-Za-z]{3}, /, 'on ') + '.',
+      body: 'The ' + rentDue.spec.replace(/^\d{4} /, '') + ' at ' + rentDue.loc.split(',')[0] + ' has ' + rentDue.days + ' rental days on it at ' + money(rentDue.rate) + ' a day. Extend here in a minute, or schedule the return and we’ll send a driver.',
+      cta: 'Extend the rental', run: function () { flowRental(rentDue, 'extend'); }, link: 'Schedule the return', href: 'orders.html#rentals' });
+    if (open.length) list.push({ id: 'billing', kicker: 'Billing · ' + open.length + ' open invoice' + (open.length === 1 ? '' : 's'), title: money(openTotal) + ' is open across ' + open.length + ' invoices.',
+      body: 'The earliest is ' + soonest.no + ' for ' + soonest.desc.toLowerCase() + ' on Unit #' + soonest.unit + ', due ' + open.slice().sort(function (a, b) { return a.due > b.due ? 1 : -1; })[0].due + '. Pay one or all of them by ACH or card, and the receipt lands in Billing.',
+      cta: 'Pay invoices', run: function () { flowPay(open); }, link: 'View billing', href: 'billing.html' });
+    if (inv) list.push({ id: 'inventory', kicker: 'Inventory · ' + inv.avail.replace(/^Arrives/, 'arriving') + ' · ' + inv.loc.split(',')[0], title: 'A 55 ft bucket built to your standard spec lands Nov 18.',
+      body: inv.year + ' ' + inv.make + ' ' + inv.model + ' with ' + inv.equip + ', new, arriving at ' + inv.loc.split(',')[0] + ' ' + inv.avail.replace(/^Arrives /, '') + '. Your price ' + money(yourPrice(inv.price)) + (pct ? ' after the ' + pct + '% fleet discount' : '') + '. Ask Sarah to hold it before it reaches the open lot.',
+      cta: 'See the spec sheet', href2: 'stock.html?s=' + inv.stock, link: 'Browse all trucks', href: 'shop.html#trucks' });
+    list.push({ id: 'clear', kicker: 'Fleet · all clear', title: 'Every unit is inside its service interval.',
+      body: 'Nothing is due for the next 23 days and uptime is holding at 98.2%. If the crews can spare a truck, this is the window to get ahead on the December dielectric tests instead of fitting them around outages.',
+      cta: 'Book ahead', run: function () { flowSchedule({ job: 'Dielectric test' }); }, link: 'Review the fleet', href: 'fleet.html' });
+    list.push({ id: 'season', kicker: 'Seasonal · cold weather', title: 'Cold weather is hard on hydraulics and batteries.',
+      body: 'Before the first freeze, Luis recommends a winter check on every aerial: hydraulic fluid, boom heater, cab heat and battery load test. Forty-five minutes a truck, done at your yard so nothing leaves the schedule.',
+      cta: 'Book winter checks', run: function () { flowSchedule({ job: 'Winter readiness check' }); }, link: 'Read Luis’s checklist', href: 'news.html#storm-season' });
+    return list;
+  }
+  function renderHero(due) {
+    var heroes = homeHeroes(due), i = 0;
+    try { i = Math.min(heroes.length - 1, Math.max(0, parseInt(sessionStorage.getItem('ctos-hero') || '0', 10) || 0)); } catch (e) {}
+    var cta = $('feat-cta'); if (!cta) return;
+    var arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    function show(k) {
+      i = (k + heroes.length) % heroes.length; var h = heroes[i];
+      try { sessionStorage.setItem('ctos-hero', i); } catch (e) {}
+      $('feat-kicker').textContent = h.kicker; $('feat-title').textContent = h.title; $('feat-body').textContent = h.body;
+      cta.innerHTML = esc(h.cta) + arrow; cta.setAttribute('href', h.href2 || '#'); cta.onclick = h.run ? function (e) { e.preventDefault(); h.run(); } : null;
+      var ln = $('feat-link'); ln.textContent = h.link; ln.setAttribute('href', h.href);
+      $('feat-dots').innerHTML = heroes.map(function (x, j) { return '<button type="button" class="feat-dot' + (j === i ? ' on' : '') + '" data-hero="' + j + '" aria-label="' + esc(x.kicker) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
+      $('feat-count').textContent = (i + 1) + ' of ' + heroes.length;
+      qsa('#feat-dots [data-hero]').forEach(function (d) { d.addEventListener('click', function () { show(+d.getAttribute('data-hero')); }); });
+      var copy = cta.closest('.featured-copy'); if (copy) { copy.classList.remove('swap'); void copy.offsetWidth; copy.classList.add('swap'); }
+    }
+    once($('feat-prev'), 'click', function () { show(i - 1); });
+    once($('feat-next'), 'click', function () { show(i + 1); });
+    show(i);
+  }
 
   renderers.fleet = function () {
     var attn = $('fleet-attn'); attn.innerHTML = attentionRows(S.attention); wireAttention(attn);

@@ -98,12 +98,19 @@
       <section class="panel" id="home-internal" hidden><div class="section-head"><h3>For CTOS staff</h3><span class="head-note">Internal</span></div><div id="home-internal-body"></div></section>
       <section class="featured" aria-labelledby="feat-title" data-home-std>
         <div class="featured-copy">
+          <div class="feat-kicker" id="feat-kicker">Service · due this month</div>
           <h2 id="feat-title">Three units are due before storm season.</h2>
-          <p>Book preventive service for the three units due this month before storm season. Two have dielectric tests due in the same window; Luis can do both in one visit at Fredericksburg.</p>
-          <a href="#" class="btn btn-primary" data-flow-schedule>
-            Schedule the three units
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
+          <p id="feat-body">Book preventive service for the three units due this month before storm season. Two have dielectric tests due in the same window; Luis can do both in one visit at Fredericksburg.</p>
+          <div class="feat-actions">
+            <a href="#" class="btn btn-primary" id="feat-cta">Book the three units<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a href="service.html" class="feat-link" id="feat-link">See what’s due</a>
+          </div>
+          <div class="feat-pager" aria-label="Other updates">
+            <button type="button" class="feat-arrow" id="feat-prev" aria-label="Previous update"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+            <div class="feat-dots" id="feat-dots"></div>
+            <button type="button" class="feat-arrow" id="feat-next" aria-label="Next update"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="feat-count" id="feat-count"></span>
+          </div>
         </div>
         <div class="featured-stats" aria-label="Fleet at a glance">
           <div class="stat">
