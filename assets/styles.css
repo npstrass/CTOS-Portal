@@ -1939,3 +1939,14 @@ table.ql-items { width: 100%; }
 .author-t strong { font-size: 0.9rem; font-weight: 600; color: var(--ink); }
 .author-t small { font-size: 0.78rem; color: var(--muted); }
 .post-when { font-size: 0.84rem; color: var(--muted); }
+
+/* Request icon in the top bar */
+.tray-btn .tray-n { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--red); color: #fff; font-size: 0.66rem; font-weight: 600; line-height: 16px; text-align: center; border: 1.5px solid var(--frame); font-variant-numeric: tabular-nums; }
+/* Configure-a-truck drawer */
+.cfg-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 4px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.cfg-qty { display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; color: var(--muted); }
+.cfg-qty .qty button { width: 30px; height: 30px; }
+.cfg-qty .qty b { min-width: 24px; text-align: center; font-size: 1rem; }
+.cfg-price { text-align: right; }
+.cfg-price b { display: block; font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.cfg-price span { display: block; font-size: 0.76rem; color: var(--muted); margin-top: 2px; max-width: 24ch; }
