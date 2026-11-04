@@ -1218,7 +1218,7 @@
     var heroes = homeHeroes(due), i = 0, timer = null, paused = false, INTERVAL = 8000;
     try { i = Math.min(heroes.length - 1, Math.max(0, parseInt(sessionStorage.getItem('ctos-hero') || '0', 10) || 0)); } catch (e) {}
     var cta = $('feat-cta'); if (!cta) return;
-    var copy = cta.closest('.featured-copy'), pager = copy.querySelector('.feat-pager');
+    var copy = cta.closest('.featured-copy'), pager = copy.querySelector('.feat-pager'), feat = copy.closest('.featured');
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
     // Every variant gets the same height: measure the tallest one at this width and reserve it.
@@ -1234,6 +1234,9 @@
       ghost.remove(); copy.style.minHeight = max + 'px';
     }
     var swapping = false, first = true;
+    // Each message pulls the red glow to a different corner, so the light moves with the copy.
+    var GLOW = [[0, 0], [-0.32, 0.18], [-0.62, -0.04], [-0.14, 0.42], [-0.48, 0.36], [-0.7, 0.2], [-0.26, -0.1]];
+    function glow(k) { var g = $('feat-glow'); if (!g || !feat) return; var o = GLOW[k % GLOW.length], s = 1 + ((k % 3) * 0.08); g.style.transform = 'translate(' + Math.round(o[0] * feat.offsetWidth) + 'px,' + Math.round(o[1] * feat.offsetHeight) + 'px) scale(' + s + ')'; }
     function paint(h) {
       $('feat-kicker').textContent = h.kicker; $('feat-title').textContent = h.title; $('feat-body').textContent = h.body;
       cta.innerHTML = esc(h.cta) + arrow; cta.setAttribute('href', h.href2 || '#'); cta.onclick = h.run ? function (e) { e.preventDefault(); h.run(); } : null;
@@ -1245,6 +1248,7 @@
     function show(k, byUser) {
       var next = (k + heroes.length) % heroes.length;
       if (byUser) stopAuto();
+      glow(next);
       if (first || reduce) { i = next; paint(heroes[i]); first = false; try { sessionStorage.setItem('ctos-hero', i); } catch (e) {} if (!byUser) restartAuto(); return; }
       if (swapping) return;
       swapping = true;
@@ -1265,7 +1269,6 @@
     function restartAuto() { clearTimeout(timer); timer = null; if (!auto) return; pager.classList.remove('auto'); void pager.offsetWidth; pager.classList.add('auto'); timer = setTimeout(tick, INTERVAL); }
     function stopAuto() { auto = false; clearTimeout(timer); timer = null; pager.classList.remove('auto'); }
     function hold(on) { paused = on; pager.classList.toggle('hold', on); if (!on && auto && !timer) restartAuto(); }
-    var feat = copy.closest('.featured');
     once(feat, 'mouseenter', function () { hold(true); });
     once(feat, 'mouseleave', function () { hold(false); });
     once(feat, 'focusin', function () { hold(true); });

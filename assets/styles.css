@@ -263,7 +263,6 @@
     overflow: hidden;
     border-radius: var(--radius);
     background:
-      radial-gradient(900px 420px at 92% 20%, rgba(166,32,42,0.42), transparent 60%), /* taste-skill-ignore */
       linear-gradient(110deg, #16181B 0%, #23272C 55%, #33393F 100%); /* brand hero, kept by brief: taste-skill-ignore */
     color: var(--paper);
     min-height: 260px;
@@ -1981,3 +1980,15 @@ table.ql-items { width: 100%; }
 .feat-pager.auto.hold .feat-dot.on::after { animation-play-state: paused; }
 @keyframes feat-fill { from { width: 0; } to { width: 100%; } }
 .featured-copy { transition: min-height .2s ease; }
+
+/* ----- Hero: glow that drifts with each message, pager pinned to the bottom ----- */
+.feat-glow { position: absolute; left: -80%; top: -80%; width: 260%; height: 260%; pointer-events: none; z-index: 0;
+  background: radial-gradient(900px 420px at 66.2% 38.5%, rgba(166,32,42,0.42), transparent 60%); /* brand hero glow: taste-skill-ignore */
+  transition: transform 1.3s cubic-bezier(.3,.6,.2,1); will-change: transform; }
+.featured-copy, .featured-stats { position: relative; z-index: 1; }
+.featured-copy { padding-bottom: 86px; }
+.feat-pager { position: absolute; left: 44px; bottom: 32px; margin-top: 0; }
+@media (max-width: 1240px) { .feat-pager { left: 44px; } }
+@media (max-width: 900px) { .featured-copy { padding-bottom: 78px; } .feat-pager { left: 20px; bottom: 24px; margin-top: 0; } }
+@media (max-width: 600px) { .feat-pager { left: 18px; } }
+@media (prefers-reduced-motion: reduce) { .feat-glow { transition: none; } }
