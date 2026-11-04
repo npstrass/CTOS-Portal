@@ -1493,11 +1493,14 @@
   }
 
   /* ---------- shop: parts, trucks and rentals, one request tray ---------- */
-  function tray() { if (!S.tray) S.tray = { trucks: [], rentals: [] }; return S.tray; }
-  function trayCount() { return cartCount() + tray().trucks.length + tray().rentals.length; }
+  function tray() { if (!S.tray) S.tray = { trucks: [], rentals: [] }; S.tray.trucks = (S.tray.trucks || []).map(function (t) { return typeof t === 'string' ? { stock: t, qty: 1, options: [] } : t; }); return S.tray; }
+  function trayTruck(stock) { return tray().trucks.filter(function (t) { return t.stock === stock; })[0] || null; }
+  function trayCount() { return cartCount() + tray().trucks.reduce(function (n, t) { return n + (t.qty || 1); }, 0) + tray().rentals.length; }
   function renderTrayBadge() {
     var n = trayCount();
-    qsa('[data-tray]').forEach(function (b) { var t = b.querySelector('.tray-t') || b; var label = n ? 'Your request · ' + n : 'Your request'; if (b.firstChild && b.firstChild.nodeType === 3) b.firstChild.textContent = label + ' '; else b.textContent = label; });
+    qsa('[data-tray-n]').forEach(function (b) { b.hidden = !n; b.textContent = n > 99 ? '99+' : n; });
+    qsa('[data-tray]').forEach(function (b) { var label = n ? 'Your request · ' + n : 'Your request'; if (b.firstChild && b.firstChild.nodeType === 3) b.firstChild.textContent = label + ' '; else b.textContent = label; });
+    qsa('[data-tray-icon]').forEach(function (b) { b.setAttribute('aria-label', n ? 'Your request, ' + n + ' item' + (n === 1 ? '' : 's') : 'Your request'); });
     qsa('[data-cart-count]').forEach(function (n2) { n2.textContent = n ? 'Your request · ' + n : 'Order parts'; });
   }
   function invTitle(it) { return it.year + ' ' + it.make + ' ' + it.model + ' · ' + it.equip; }
@@ -1557,7 +1560,7 @@
     qsa('.g-nav', g).forEach(function (b) { b.addEventListener('click', function () { show(i + (+b.getAttribute('data-g'))); }); });
     g.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight') show(i + 1); if (e.key === 'ArrowLeft') show(i - 1); });
   }
-  function inTrayTruck(stock) { return tray().trucks.indexOf(stock) >= 0; }
+  function inTrayTruck(stock) { return !!trayTruck(stock); }
   function inTrayRental(stock) { return tray().rentals.some(function (r) { return r.stock === stock; }); }
   function invCard(it, F) {
     var sale = F.mode === 'sale', pics = invPhotos(it), photo = pics[0] || ('assets/img/' + it.stock + '.jpg'), fallback = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
@@ -1608,7 +1611,29 @@
     qsa('[data-inv-save]', root).forEach(function (b) { b.addEventListener('click', function () { var it = S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-save'); })[0]; flowSaveBuild({ it: it, spec: invTitle(it), lastPrice: it.price }); }); });
     qsa('[data-inv-detail]', root).forEach(function (b) { b.addEventListener('click', function () { flowInventoryDetail(S.inventory.filter(function (x) { return x.stock === b.getAttribute('data-inv-detail'); })[0], b.closest('.inv-card'), b.getAttribute('data-mode')); }); });
   }
-  function toggleTruck(stock) { var t = tray().trucks, i = t.indexOf(stock); if (i >= 0) t.splice(i, 1); else { t.push(stock); toast(stock + ' added to your quote request.'); } save(); renderPage(); }
+  function toggleTruck(stock) { var t = tray().trucks, i = t.map(function (x) { return x.stock; }).indexOf(stock); if (i >= 0) { t.splice(i, 1); save(); renderPage(); } else flowConfigureTruck(stock); }
+  // Quantity and options for one truck before it goes on the request; also used to edit a line already on it.
+  function flowConfigureTruck(stock, back) {
+    var it = S.inventory.filter(function (x) { return x.stock === stock; })[0]; if (!it) return;
+    var line = trayTruck(stock), qty = line ? line.qty : 1, sel = line ? line.options.slice() : (it.pickedOptions || []).slice(), opts = stockOptions(it);
+    function total() { return qty * (yourPrice(it.price) + sel.reduce(function (n, id) { var o = opts.filter(function (x) { return x[0] === id; })[0]; return n + (o ? o[2] : 0); }, 0)); }
+    openDrawer({
+      kind: line ? 'On your request · ' + it.stock : 'Add to quote request · ' + it.stock, title: invTitle(it), meta: esc(titleCase(it.ig || it.kindName)) + ' · ' + it.loc + ' · ' + it.avail,
+      body: '<div class="cfg-top"><div class="cfg-qty"><span>Quantity</span><span class="qty"><button type="button" id="cq-minus" aria-label="Fewer">−</button><b id="cq-n">' + qty + '</b><button type="button" id="cq-plus" aria-label="More">+</button></span></div><div class="cfg-price"><b id="cq-total">' + money(total()) + '</b><span>' + money(yourPrice(it.price)) + ' each at your price · options added below</span></div></div>' +
+        '<h4 class="dr-sub">Options<span class="muted">not included in the price</span></h4><div class="list" id="cq-opts">' + opts.map(function (o) { return '<label class="row fig st-opt"><input type="checkbox" data-opt="' + o[0] + '"' + (sel.indexOf(o[0]) >= 0 ? ' checked' : '') + '><span>' + esc(o[1]) + '<small>' + o[0] + '</small></span><b>' + (o[2] ? money(o[2]) : 'No charge') + '</b></label>'; }).join('') + '</div>' +
+        '<p class="form-note">Anything else goes in the notes on the request; Sarah prices it on the quote. <a href="stock.html?s=' + it.stock + '" class="lnk">Full spec sheet</a></p>',
+      foot: '<button type="button" class="btn btn-primary" id="cq-add">' + (line ? 'Update request' : 'Add to request') + '</button>' + (line ? '<button type="button" class="lnk" id="cq-rm">Remove from request</button>' : '') + (back ? '<button type="button" class="lnk" id="cq-back">Back to request</button>' : ''),
+      after: function () {
+        function paint() { $('cq-n').textContent = qty; $('cq-total').textContent = money(total()); }
+        $('cq-minus').addEventListener('click', function () { qty = Math.max(1, qty - 1); paint(); });
+        $('cq-plus').addEventListener('click', function () { qty = Math.min(50, qty + 1); paint(); });
+        qsa('#cq-opts [data-opt]').forEach(function (cb) { cb.addEventListener('change', function () { sel = qsa('#cq-opts [data-opt]:checked').map(function (x) { return x.getAttribute('data-opt'); }); paint(); }); });
+        $('cq-add').addEventListener('click', function () { if (line) { line.qty = qty; line.options = sel; } else tray().trucks.push({ stock: it.stock, qty: qty, options: sel }); it.pickedOptions = sel; save(); toast((line ? 'Updated ' : 'Added ') + (qty > 1 ? qty + ' × ' : '') + it.stock + (sel.length ? ' with ' + sel.length + ' option' + (sel.length > 1 ? 's' : '') : '') + '.'); if (back) back(); else { closeDrawer(); renderPage(); } });
+        var rm = $('cq-rm'); if (rm) rm.addEventListener('click', function () { tray().trucks = tray().trucks.filter(function (x) { return x.stock !== it.stock; }); save(); if (back) back(); else { closeDrawer(); renderPage(); } });
+        var bk = $('cq-back'); if (bk) bk.addEventListener('click', back);
+      }
+    });
+  }
   function toggleRental(stock) { var t = tray().rentals, i = t.map(function (r) { return r.stock; }).indexOf(stock); if (i >= 0) t.splice(i, 1); else { var F = stockF.rent, d = F.from ? new Date(F.from + 'T12:00:00') : new Date(); if (!F.from) d.setDate(d.getDate() + 2); t.push({ stock: stock, start: d.toISOString().slice(0, 10), term: F.term, how: 'deliver', site: (S.sites.filter(function (s) { return s.type !== 'CTOS location'; })[0] || {}).name || 'Other address' }); toast(stock + ' added to your request.'); } save(); renderPage(); }
   function initStock(F) {
     if (!$(F.ids.results)) return;
@@ -1662,7 +1687,7 @@
     var ready = S.inventory.filter(function (it) { return it.sale && invReady(it); }).length, rent = S.inventory.filter(function (it) { return it.rent && invReady(it); }).length, n = trayCount();
     $('shop-finding').innerHTML = 'Parts at ' + (S.pricing.partsPct ? S.pricing.partsPct + '% off list' : 'list price') + ', ' + ready + ' trucks in stock for sale and ' + rent + ' available to rent at ' + esc(S.pricing.tier) + ' pricing. Everything you pick goes on one request; review it when you are ready and each part becomes the right thing: a parts order, a quote from Sarah, or a reservation.' + (n ? ' <strong>' + n + ' item' + (n === 1 ? '' : 's') + ' on your request now.</strong>' : '');
     $('tab-parts-n').textContent = cartCount() ? cartCount() + ' picked' : 'Catalog';
-    $('tab-trucks-n').textContent = tray().trucks.length ? tray().trucks.length + ' to quote' : ready + ' in stock';
+    $('tab-trucks-n').textContent = tray().trucks.length ? tray().trucks.reduce(function (n, t) { return n + t.qty; }, 0) + ' to quote' : ready + ' in stock';
     $('tab-rentals-n').textContent = tray().rentals.length ? tray().rentals.length + ' to reserve' : rent + ' available';
     qsa('[data-flow-quote]').forEach(function (b) { once(b, 'click', function (e) { e.preventDefault(); flowRequestQuote(); }); });
     renderTrayBadge();
@@ -1759,7 +1784,7 @@
     var sub = it.kind === 'trailer' ? it.chassis : it.kind === 'chassis' ? specDrive(it.chassis || '') + ' · ' + specEngine(it.chassis || '') + ' · ' + specTrans(it.chassis || '') : it.year + ' ' + it.make + ' ' + it.model + ' · ' + specDrive(it.chassis || '') + ' · ' + specEngine(it.chassis || '');
     var cond = it.cond === 'new' ? 'New, ' + num(it.miles) + ' delivery miles' : it.cond === 'used' ? 'Used, ' + num(it.miles) + ' mi and ' + num(it.hours) + ' hours, CTOS certified with a 90-day warranty' : 'Rental fleet, ' + num(it.hours) + ' hours, serviced on CTOS intervals';
     head.innerHTML = '<div><h1>' + esc(title) + '</h1><p class="st-sub">' + esc(sub) + '</p><p class="finding">' + esc(it.spec) + '. ' + esc(cond) + '.</p><p class="st-meta"><span class="mono">' + esc(it.item || '') + '</span>' + (it.itemName ? ' ' + esc(it.itemName) : '') + ' · stock <span class="mono">' + it.stock + '</span></p></div>' +
-      '<div class="side">' + (it.sale ? '<button type="button" class="btn btn-primary' + (picked ? ' on' : '') + '" id="st-pick">' + (picked ? 'On your quote request' : 'Add to quote request') + '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>' : '<button type="button" class="btn btn-primary' + (picked ? ' on' : '') + '" id="st-rent"' + (av.ok || picked ? '' : ' disabled') + '>' + (picked ? 'On your request' : av.ok ? 'Add to request' : 'Not available for your dates') + '</button>') + '<span class="q-second">' + (it.sale ? '<button type="button" class="lnk" id="st-build">Save as preferred build</button>' : '') + '<a href="#" class="lnk" id="st-pdf2">Spec sheet PDF</a><a href="team.html" class="lnk">Ask Sarah</a></span></div>';
+      '<div class="side">' + (it.sale ? '<button type="button" class="btn btn-primary' + (picked ? ' on' : '') + '" id="st-pick">' + (picked ? 'On your request · edit quantity' : 'Add to quote request') + '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>' : '<button type="button" class="btn btn-primary' + (picked ? ' on' : '') + '" id="st-rent"' + (av.ok || picked ? '' : ' disabled') + '>' + (picked ? 'On your request' : av.ok ? 'Add to request' : 'Not available for your dates') + '</button>') + '<span class="q-second">' + (it.sale ? '<button type="button" class="lnk" id="st-build">Save as preferred build</button>' : '') + '<a href="#" class="lnk" id="st-pdf2">Spec sheet PDF</a><a href="team.html" class="lnk">Ask Sarah</a></span></div>';
     $('st-gallery').innerHTML = galleryHtml(it).replace('dr-photo', 'st-main'); $('st-gallery').setAttribute('data-n', pics.length);
     $('st-item').textContent = (it.item ? it.item + ' · ' : '') + it.stock;
     var sg = stockSpecs(it), cols = [[], []], h = [0, 0];
@@ -1771,8 +1796,8 @@
     var opts = stockOptions(it), sel = (it.pickedOptions || []);
     $('st-options').innerHTML = opts.map(function (o) { return '<label class="row fig st-opt"><input type="checkbox" data-opt="' + o[0] + '"' + (sel.indexOf(o[0]) >= 0 ? ' checked' : '') + '><span>' + esc(o[1]) + '<small>' + o[0] + '</small></span><b>' + (o[2] ? money(o[2]) : 'No charge') + '</b></label>'; }).join('');
     $('st-where').innerHTML = '<dl class="dr-facts"><dt>Location</dt><dd>' + esc(it.loc) + (LOC_MI[it.loc] ? ' · ' + num(LOC_MI[it.loc]) + ' mi from your yard' : '') + '</dd><dt>Status</dt><dd>' + esc(it.avail) + '</dd><dt>Stock</dt><dd class="mono">' + it.stock + '</dd>' + (it.kind === 'trailer' ? '' : '<dt>Odometer</dt><dd>' + num(it.miles) + ' mi</dd><dt>Hours</dt><dd>' + num(it.hours) + '</dd>') + '</dl><p class="form-note">Delivery to your yard is quoted by CTOS Logistics; ask Sarah or add it to the request.</p>';
-    qsa('[data-opt]').forEach(function (cb) { cb.addEventListener('change', function () { it.pickedOptions = qsa('[data-opt]:checked').map(function (x) { return x.getAttribute('data-opt'); }); save(); if (picked) toast('Options saved to the quote request.'); }); });
-    var pk = $('st-pick'); if (pk) pk.addEventListener('click', function () { it.pickedOptions = qsa('[data-opt]:checked').map(function (x) { return x.getAttribute('data-opt'); }); save(); toggleTruck(it.stock); });
+    qsa('#st-options [data-opt]').forEach(function (cb) { cb.addEventListener('change', function () { it.pickedOptions = qsa('#st-options [data-opt]:checked').map(function (x) { return x.getAttribute('data-opt'); }); var ln = trayTruck(it.stock); if (ln) { ln.options = it.pickedOptions.slice(); toast('Options updated on your request.'); } save(); }); });
+    var pk = $('st-pick'); if (pk) pk.addEventListener('click', function () { it.pickedOptions = qsa('#st-options [data-opt]:checked').map(function (x) { return x.getAttribute('data-opt'); }); save(); flowConfigureTruck(it.stock); });
     var rt = $('st-rent'); if (rt) rt.addEventListener('click', function () { toggleRental(it.stock); });
     var bd = $('st-build'); if (bd) bd.addEventListener('click', function () { flowSaveBuild({ it: it, spec: invTitle(it), lastPrice: it.price }); });
     var fn = $('st-fin'); if (fn) fn.addEventListener('click', function () { flowCreditApp({ financing: true, amount: fin.price }); });
@@ -1784,7 +1809,7 @@
   /* ---------- the request tray: review everything, submit once ---------- */
   function flowTray() {
     var T = tray();
-    function trucks() { return T.trucks.map(function (s) { return S.inventory.filter(function (x) { return x.stock === s; })[0]; }).filter(Boolean); }
+    function trucks() { return T.trucks.map(function (ln) { var it = S.inventory.filter(function (x) { return x.stock === ln.stock; })[0]; return it ? { it: it, ln: ln } : null; }).filter(Boolean); }
     function rentals() { return T.rentals.map(function (r) { return { r: r, it: S.inventory.filter(function (x) { return x.stock === r.stock; })[0] }; }).filter(function (x) { return x.it; }); }
     function body() {
       var n = trayCount(); if (!n) return emptyHtml('Nothing on your request yet. Add parts, trucks or rentals from the Shop and they collect here.');
@@ -1793,18 +1818,18 @@
       if (S.cart.length) h += '<h4 class="dr-sub">Parts<span class="muted">becomes a parts order</span></h4><div class="list li-list cart">' + S.cart.map(function (c2, i) { return '<div class="row fig li"><span>' + esc(c2.d) + '<small>' + esc(c2.pn) + ' · ' + money(c2.p) + ' each</small></span><span class="qty"><button type="button" data-q="-1" data-i="' + i + '" aria-label="Fewer">−</button><b>' + c2.q + '</b><button type="button" data-q="1" data-i="' + i + '" aria-label="More">+</button></span><b>' + money(c2.q * c2.p) + '</b></div>'; }).join('') + '<div class="row fig total"><span>Parts total<small>Before tax</small></span><b>' + money(cartTotal()) + '</b></div></div>' +
         '<div class="form tray-form"><div class="form-2"><label>Ship to<select id="t-ship">' + S.shipTo.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></label><label>For unit<select id="t-unit"><option value="">Shop stock</option>' + S.vehicles.map(function (v) { return '<option value="' + v.unit + '"' + (v.unit === spF.unit ? ' selected' : '') + '>Unit #' + v.unit + '</option>'; }).join('') + '</select></label></div></div>';
       var tk = trucks();
-      if (tk.length) h += '<h4 class="dr-sub">Trucks<span class="muted">becomes one quote request to Sarah</span></h4><div class="list li-list">' + tk.map(function (it) { return '<div class="row fig li tray-line"><span>' + esc(invTitle(it)) + '<small>' + it.stock + ' · ' + esc(it.loc) + ' · ' + esc(it.avail) + ((it.pickedOptions || []).length ? ' · ' + it.pickedOptions.length + ' option' + (it.pickedOptions.length > 1 ? 's' : '') : '') + '</small></span><b>' + money(yourPrice(it.price)) + '</b><button type="button" class="lnk" data-rm-truck="' + it.stock + '" aria-label="Remove ' + it.stock + '">Remove</button></div>'; }).join('') + '</div>' +
+      if (tk.length) h += '<h4 class="dr-sub">Trucks<span class="muted">becomes one quote request to Sarah</span></h4><div class="list li-list">' + tk.map(function (x) { var it = x.it, ln = x.ln, oc = (ln.options || []).length, optTotal = (ln.options || []).reduce(function (n, id) { var o = stockOptions(it).filter(function (y) { return y[0] === id; })[0]; return n + (o ? o[2] : 0); }, 0); return '<div class="row fig li tray-line"><span>' + (ln.qty > 1 ? ln.qty + ' × ' : '') + esc(invTitle(it)) + '<small>' + it.stock + ' · ' + esc(it.loc) + ' · ' + esc(it.avail) + (oc ? ' · ' + oc + ' option' + (oc > 1 ? 's' : '') + ', ' + money(optTotal) : '') + '</small></span><b>' + money(ln.qty * (yourPrice(it.price) + optTotal)) + '</b><button type="button" class="lnk" data-edit-truck="' + it.stock + '">Edit</button></div>'; }).join('') + '</div>' +
         '<div class="form tray-form"><div class="form-2"><label>Needed by<input type="date" id="t-by"></label><label>Trade-in<select id="t-trade"><option value="">None</option>' + S.vehicles.map(function (v) { return '<option>Unit #' + v.unit + ' · ' + esc(v.model) + '</option>'; }).join('') + '</select></label></div></div>';
       var rl = rentals();
       if (rl.length) h += '<h4 class="dr-sub">Rentals<span class="muted">each becomes a reservation</span></h4><div class="list li-list">' + rl.map(function (x, i) { var it = x.it, r = x.r; return '<div class="row fig li tray-line"><span>' + esc(invTitle(it)) + '<small>' + it.stock + ' · ' + esc(it.loc) + ' · ' + money(yourRate(it.rates.day)) + ' / day</small></span><b></b><button type="button" class="lnk" data-rm-rental="' + it.stock + '" aria-label="Remove ' + it.stock + '">Remove</button></div><div class="rent-opts"><label>Start<input type="date" data-ri="' + i + '" data-k="start" value="' + esc(r.start) + '"></label><label>Term<select data-ri="' + i + '" data-k="term">' + [[7, '1 week'], [14, '2 weeks'], [30, '1 month'], [90, '3 months'], [180, '6 months']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === +r.term ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label><label>Delivery<select data-ri="' + i + '" data-k="site"><option value="pickup"' + (r.how === 'pickup' ? ' selected' : '') + '>Pick up at ' + esc(it.loc) + '</option>' + sites.map(function (s) { return '<option' + (r.how !== 'pickup' && r.site === s.name ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '<option' + (r.how !== 'pickup' && r.site === 'Other address' ? ' selected' : '') + '>Other address</option></select></label></div>'; }).join('') + '</div>';
-      h += '<p class="form-note">' + (S.credit.status === 'active' ? 'Parts and rentals bill to your account on ' + esc(S.credit.terms) + '.' : 'Parts and rentals bill to the card on file.') + ' Truck pricing comes back on the quote; nothing is committed until you accept it.</p>';
+      h += '<p class="form-note">' + (S.credit.status === 'active' ? 'Parts and rentals bill to your account on ' + esc(S.credit.terms) + '.' : 'Parts and rentals bill to the card on file.') + ' Truck pricing comes back on the quote; nothing is ordered until you sign the buyer’s order.</p>';
       return h;
     }
     function foot() { var n = trayCount(); return n ? '<button type="button" class="btn btn-primary" id="t-submit">Submit request</button><button type="button" class="lnk" id="t-clear">Clear all</button>' : '<a href="shop.html" class="lnk">Go to the Shop</a>'; }
     function repaint() { $('dr-body').innerHTML = body(); $('dr-foot').innerHTML = foot(); $('dr-title').textContent = trayCount() ? trayCount() + ' item' + (trayCount() === 1 ? '' : 's') : 'Your request'; wire(); renderTrayBadge(); }
     function wire() {
       qsa('.cart .qty button', drawer).forEach(function (b) { b.addEventListener('click', function () { var i = +b.getAttribute('data-i'); S.cart[i].q += +b.getAttribute('data-q'); if (S.cart[i].q <= 0) S.cart.splice(i, 1); save(); repaint(); }); });
-      qsa('[data-rm-truck]', drawer).forEach(function (b) { b.addEventListener('click', function () { T.trucks = T.trucks.filter(function (s) { return s !== b.getAttribute('data-rm-truck'); }); save(); repaint(); }); });
+      qsa('[data-edit-truck]', drawer).forEach(function (b) { b.addEventListener('click', function () { flowConfigureTruck(b.getAttribute('data-edit-truck'), function () { flowTray(); }); }); });
       qsa('[data-rm-rental]', drawer).forEach(function (b) { b.addEventListener('click', function () { T.rentals = T.rentals.filter(function (r) { return r.stock !== b.getAttribute('data-rm-rental'); }); save(); repaint(); }); });
       qsa('[data-ri]', drawer).forEach(function (el) { el.addEventListener('change', function () { var r = T.rentals[+el.getAttribute('data-ri')], k = el.getAttribute('data-k'); if (!r) return; if (k === 'site') { if (el.value === 'pickup') r.how = 'pickup'; else { r.how = 'deliver'; r.site = el.value; } } else r[k] = k === 'term' ? +el.value : el.value; save(); }); });
       var cl = $('t-clear'); if (cl) cl.addEventListener('click', function () { confirmInline($('dr-foot'), 'Clear everything on your request?', 'Clear', function () { S.cart = []; T.trucks = []; T.rentals = []; save(); repaint(); }); });
@@ -1822,9 +1847,9 @@
       var tk = trucks();
       if (tk.length) {
         var qno = 'Q-' + (10422 + S.quotes.length + 1), sf = '0Q0Hs00000B' + Math.random().toString(36).slice(2, 7).toUpperCase();
-        S.quotes.unshift({ no: qno, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: tk.map(function (it, i) { return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: invTitle(it), detail: (it.cond === 'new' ? 'New' : 'Used') + ' · ' + it.chassis + ' · ' + it.spec + ' · stock ' + it.stock, qty: 1, unitPrice: 0, eta: '', items: (it.item ? [[it.item, '', it.year + ' ' + it.itemName + (it.cond === 'used' ? ', CERTIFIED USED' : ''), 'Requested', 0, 0, 0, 0]] : []).concat((it.pickedOptions || []).map(function (id) { var o = stockOptions(it).filter(function (x) { return x[0] === id; })[0]; return o ? [o[0], '', o[1].toUpperCase(), '', o[2], 0, 0, 0] : null; }).filter(Boolean)) }; }), note: ($('t-by').value ? 'Needed by ' + $('t-by').value + '. ' : '') + ($('t-trade').value ? 'Trade-in: ' + $('t-trade').value + '.' : '') });
+        S.quotes.unshift({ no: qno, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: tk.map(function (x, i) { var it = x.it, ln = x.ln; return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: invTitle(it), detail: (it.cond === 'new' ? 'New' : 'Used') + ' · ' + it.chassis + ' · ' + it.spec + ' · stock ' + it.stock, qty: ln.qty || 1, unitPrice: 0, eta: '', items: (it.item ? [[it.item, '', it.year + ' ' + it.itemName + (it.cond === 'used' ? ', CERTIFIED USED' : ''), 'Requested', 0, 0, 0, 0]] : []).concat((ln.options || []).map(function (id) { var o = stockOptions(it).filter(function (x) { return x[0] === id; })[0]; return o ? [o[0], '', o[1].toUpperCase(), '', o[2], 0, 0, 0] : null; }).filter(Boolean)) }; }), note: ($('t-by').value ? 'Needed by ' + $('t-by').value + '. ' : '') + ($('t-trade').value ? 'Trade-in: ' + $('t-trade').value + '.' : '') });
         S.salesforce.lastSync = 'Just now';
-        addNotification({ title: qno + ' sent to Sarah', text: tk.length + ' truck' + (tk.length > 1 ? 's' : '') + ' from stock. She usually replies within a business day.', href: 'quote.html?q=' + qno });
+        addNotification({ title: qno + ' sent to Sarah', text: tk.reduce(function (n, x) { return n + (x.ln.qty || 1); }, 0) + ' truck' + (tk.length > 1 || tk[0].ln.qty > 1 ? 's' : '') + ' from stock. She usually replies within a business day.', href: 'quote.html?q=' + qno });
         made.push('quote request ' + qno); T.trucks = [];
       }
       var rl = rentals();
@@ -2200,12 +2225,12 @@
   }
 
   /* ---------- boot ---------- */
-  function renderPage() { var p = document.body.getAttribute('data-page'); if (renderers[p]) renderers[p](); }
+  function renderPage() { var p = document.body.getAttribute('data-page'); if (renderers[p]) renderers[p](); renderTrayBadge(); }
   document.addEventListener('DOMContentLoaded', function () {
     if (!requireLogin()) return;
     applyPersona();
     initNav(); initBell(); initSearch(); initStamp();
-    qsa('[data-flow-cart], [data-tray]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowTray(); }); });
+    qsa('[data-flow-cart], [data-tray], [data-tray-icon]').forEach(function (b) { b.addEventListener('click', function (e) { e.preventDefault(); flowTray(); }); });
     renderTrayBadge();
     renderPage();
   });
