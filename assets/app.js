@@ -1233,17 +1233,30 @@
       });
       ghost.remove(); copy.style.minHeight = max + 'px';
     }
-    function show(k, byUser) {
-      i = (k + heroes.length) % heroes.length; var h = heroes[i];
-      try { sessionStorage.setItem('ctos-hero', i); } catch (e) {}
+    var swapping = false, first = true;
+    function paint(h) {
       $('feat-kicker').textContent = h.kicker; $('feat-title').textContent = h.title; $('feat-body').textContent = h.body;
       cta.innerHTML = esc(h.cta) + arrow; cta.setAttribute('href', h.href2 || '#'); cta.onclick = h.run ? function (e) { e.preventDefault(); h.run(); } : null;
       var ln = $('feat-link'); ln.textContent = h.link; ln.setAttribute('href', h.href);
       $('feat-dots').innerHTML = heroes.map(function (x, j) { return '<button type="button" class="feat-dot' + (j === i ? ' on' : '') + '" data-hero="' + j + '" aria-label="' + esc(x.kicker) + '"' + (j === i ? ' aria-current="true"' : '') + '></button>'; }).join('');
       $('feat-count').textContent = (i + 1) + ' of ' + heroes.length;
       qsa('#feat-dots [data-hero]').forEach(function (d) { d.addEventListener('click', function () { show(+d.getAttribute('data-hero'), true); }); });
-      copy.classList.remove('swap'); void copy.offsetWidth; copy.classList.add('swap');
-      if (byUser) stopAuto(); else restartAuto();
+    }
+    function show(k, byUser) {
+      var next = (k + heroes.length) % heroes.length;
+      if (byUser) stopAuto();
+      if (first || reduce) { i = next; paint(heroes[i]); first = false; try { sessionStorage.setItem('ctos-hero', i); } catch (e) {} if (!byUser) restartAuto(); return; }
+      if (swapping) return;
+      swapping = true;
+      // Old copy settles out, then the new copy rises in behind it.
+      copy.classList.remove('swap'); copy.classList.add('out');
+      setTimeout(function () {
+        i = next; paint(heroes[i]);
+        try { sessionStorage.setItem('ctos-hero', i); } catch (e) {}
+        copy.classList.remove('out'); void copy.offsetWidth; copy.classList.add('swap');
+        swapping = false;
+        if (!byUser) restartAuto();
+      }, 320);
     }
     // Auto-rotate until the reader touches the pager, pausing while the pointer or focus is on the hero.
     var auto = !reduce && typeof window.requestAnimationFrame === 'function';

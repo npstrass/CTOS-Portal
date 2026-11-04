@@ -1966,10 +1966,12 @@ table.ql-items { width: 100%; }
 .feat-dot:hover { background: rgba(255,255,255,0.6); }
 .feat-dot.on { width: 18px; border-radius: 3px; background: var(--paper); }
 .feat-count { font-size: 0.72rem; color: rgba(255,255,255,0.45); margin-left: 6px; font-variant-numeric: tabular-nums; }
-@keyframes feat-swap { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.featured-copy.swap .feat-kicker, .featured-copy.swap h2, .featured-copy.swap p, .featured-copy.swap .feat-actions { animation: feat-swap .28s ease both; }
-.featured-copy.swap h2 { animation-delay: .03s; } .featured-copy.swap p { animation-delay: .06s; } .featured-copy.swap .feat-actions { animation-delay: .09s; }
-@media (prefers-reduced-motion: reduce) { .featured-copy.swap * { animation: none; } }
+@keyframes feat-swap { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.featured-copy .feat-kicker, .featured-copy h2, .featured-copy p, .featured-copy .feat-actions { transition: opacity .32s ease, transform .32s ease; }
+.featured-copy.out .feat-kicker, .featured-copy.out h2, .featured-copy.out p, .featured-copy.out .feat-actions { opacity: 0; transform: translateY(-6px); }
+.featured-copy.swap .feat-kicker, .featured-copy.swap h2, .featured-copy.swap p, .featured-copy.swap .feat-actions { animation: feat-swap .7s cubic-bezier(.2,.7,.2,1) both; }
+.featured-copy.swap h2 { animation-delay: .06s; } .featured-copy.swap p { animation-delay: .12s; } .featured-copy.swap .feat-actions { animation-delay: .18s; }
+@media (prefers-reduced-motion: reduce) { .featured-copy.swap *, .featured-copy.out * { animation: none; transition: none; } }
 @media (max-width: 900px) { .feat-pager { margin-top: 22px; } .feat-actions { gap: 16px; } }
 
 /* auto-rotate: the active dot fills over the interval, freezes while the hero is hovered or focused */
