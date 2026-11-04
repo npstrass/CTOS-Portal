@@ -1975,10 +1975,10 @@ table.ql-items { width: 100%; }
 
 /* auto-rotate: the active dot fills over the interval, freezes while the hero is hovered or focused */
 .feat-dot { position: relative; overflow: hidden; }
-.feat-dot.on::after { content: ""; position: absolute; inset: 0; width: 0; background: var(--red); border-radius: inherit; }
+.feat-dot.on::after { content: ""; position: absolute; inset: 0; background: var(--red); border-radius: inherit; transform: scaleX(0); transform-origin: left center; will-change: transform; }
 .feat-pager.auto .feat-dot.on::after { animation: feat-fill 8s linear forwards; }
 .feat-pager.auto.hold .feat-dot.on::after { animation-play-state: paused; }
-@keyframes feat-fill { from { width: 0; } to { width: 100%; } }
+@keyframes feat-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .featured-copy { transition: min-height .2s ease; }
 
 /* ----- Hero: glow that drifts with each message, pager pinned to the bottom ----- */
