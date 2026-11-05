@@ -2300,3 +2300,5 @@ body[data-page="quote"] .stats { display: block; border: 0; padding: 0; margin: 
   .pg-price .big span { display: inline; margin-left: 6px; }
   .pg-lines { padding: 6px 18px 10px; }
 }
+
+.pg-bar[hidden] { display: none !important; }
