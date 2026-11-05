@@ -1992,3 +1992,5 @@ table.ql-items { width: 100%; }
 @media (max-width: 900px) { .featured-copy { padding-bottom: 78px; } .feat-pager { left: 20px; bottom: 24px; margin-top: 0; } }
 @media (max-width: 600px) { .feat-pager { left: 18px; } }
 @media (prefers-reduced-motion: reduce) { .feat-glow { transition: none; } }
+
+.q-kind { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }

@@ -1,7 +1,7 @@
 // CTOS One demo data. One dataset for every page; app.js renders from it.
 // Totals are computed in app.js from these rows, never typed in separately.
 window.CTOS_SEED = {
-  version: 6, // bump this whenever the seed data changes; saved demo state from older versions is discarded
+  version: 7, // bump this whenever the seed data changes; saved demo state from older versions is discarded
   today: 'Tue, Oct 27',
   user: { name: 'Mike Brown', initials: 'MB', org: 'Shenandoah Line Services', fleetSize: 48 },
 
@@ -429,7 +429,7 @@ window.CTOS_SEED = {
   salesforce: { connected: true, lastSync: '4 min ago', instance: 'customtruck.my.salesforce.com' },
   // Salesforce Quotes. Each Quote Line is one truck configuration; an accepted line becomes a truck order.
   quotes: [
-    { no: 'Q-10422', sfId: '0Q0Hs00000A7kQ2', stage: 'ready', requested: 'Oct 20', updated: 'Oct 26', owner: 'Sarah Mitchell', validUntil: 'Nov 20', note: 'Includes the fleet discount and delivery to Stafford. Both lines must be accepted together for the discount.',
+    { no: 'Q-10422', req: 'RQ-2038', sfId: '0Q0Hs00000A7kQ2', seed: true, stage: 'ready', requested: 'Oct 20', updated: 'Oct 26', owner: 'Sarah Mitchell', validUntil: 'Nov 20', note: 'Includes the fleet discount and delivery to Stafford. Both lines must be accepted together for the discount.',
       terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'CTOS Capital · 60 months', lienholder: 'CTOS Capital, Kansas City MO', deliverTo: 'Shenandoah yard, 1180 Garrisonville Rd, Stafford, VA 22554', po: '', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
       lines: [
         { ql: 'QL-0140628', spec: '2026 Freightliner M2 106 · Terex LT40', detail: 'B6.7 · Allison 2500 · 11 ft line body · AT40G 45 ft · white', qty: 2, unitPrice: 246300, eta: 'Mar 2027',
@@ -437,7 +437,7 @@ window.CTOS_SEED = {
         { ql: 'QL-0140629', spec: '2026 Ford F-750 · Versalift VST-52', detail: '7.3L gas · 11 ft fiberglass body · VST-52 · white', qty: 1, unitPrice: 189800, eta: 'Feb 2027',
           items: [['100_02317', 'TM788440', '2026 FORD F750/VST-52-I 4X2 with 11FT FIBERGLASS BODY', 'Quoted', 197830, 6, 0, 0], ['501_01013', '', '4 CORNER STROBES (2 IN THE GRILL / 2 AT THE REAR)', '', 1500, 0, 0, 0], ['501_03305', '', 'HYDRAULIC TOOL CIRCUIT at PLATFORM', '', 2340, 0, 0, 0]] }
       ] },
-    { no: 'Q-10419', sfId: '0Q0Hs00000A7hR9', stage: 'review', requested: 'Oct 24', updated: 'Oct 27', owner: 'Sarah Mitchell', validUntil: '', note: 'Sarah is confirming availability at the Richmond lot.',
+    { no: 'RQ-2041', req: 'RQ-2041', sfId: '006Hs00000C2mX7', seed: true, stage: 'review', requested: 'Oct 24', updated: 'Oct 27', owner: 'Sarah Mitchell', validUntil: '', note: 'Sarah is confirming availability at the Richmond lot.',
       terms: { payer: 'Shenandoah Line Services · AP, Mike Brown', financing: 'Cash · Net 30 on account', lienholder: '', deliverTo: 'Pick up at CTOS Richmond', po: '', fet: 'Exempt · IRS 637 on file', title: 'Virginia · Shenandoah Line Services' },
       lines: [ { ql: 'QL-0140702', spec: '2023 International MV · Terex XT60, used', detail: '41k mi · 1,100 boom hrs · certified, fresh dielectric', qty: 1, unitPrice: 0, eta: 'In stock, Richmond',
           items: [['100_01305', 'TM761155', '2023 INTERNATIONAL MV607/XT60 4X2, CERTIFIED USED', 'In review', 0, 0, 0, 0]] } ] },
