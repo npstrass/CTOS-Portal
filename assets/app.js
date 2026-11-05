@@ -280,74 +280,80 @@
   }
   function optName(n) { return titleCase(n).replace(/\(2 In The Grill \/ 2 At The Rear\)/, '(2 grill, 2 rear)').replace(/\bKw\b/g, 'kW').replace(/\bAt\b/g, 'at').replace(/\bWith\b/g, 'with').replace(/\bAnd\b/g, 'and'); }
   var QC_SHOW = 6;
-  function qcTruckRows(q, l, isReq, ui) {
-    var ts = lineTrucks(q, l);
-    if (!ts.length) return '';
+  // ----- Quote page: products, each with its quote lines (one QL per truck) -----
+  function qlRowsHtml(q, l, isReq, ui, signed) {
+    var ts = lineTrucks(q, l), last = TRUCK_STAGES.length - 1;
+    if (!ts.length) {
+      // not signed yet: one row per QL, all at the same stage
+      var st = lineStage(q, l, null);
+      return '<div class="qc-rows">' + lineQls(l).map(function (ql) { return '<div class="qc-r"><span class="qc-no' + (isReq ? ' muted' : '') + '">' + (isReq ? 'Line ' + (lineQls(l).indexOf(ql) + 1) : esc(ql)) + '</span><span class="qc-stage">' + trackerHtml(st, true) + '<span>' + esc(st.name) + '</span></span><span class="qc-where">' + (st.when ? esc(st.when) : '') + '</span><span class="qc-eta">' + (l.eta ? 'Expected <b>' + esc(l.eta) + '</b>' : '<span class="muted">' + (isReq ? 'Lead time with the quote' : 'Lead time on the quote') + '</span>') + '</span></div>'; }).join('') + '</div>';
+    }
     var rows = ts.map(function (t) { return { t: t, st: lineStage(q, l, t) }; });
-    var last = TRUCK_STAGES.length - 1; rows.sort(function (a, b) { var ad = a.st.i === last ? 1 : 0, bd = b.st.i === last ? 1 : 0; return ad - bd || b.st.i - a.st.i || (a.t.no < b.t.no ? -1 : 1); });
+    rows.sort(function (a, b) { var ad = a.st.i === last ? 1 : 0, bd = b.st.i === last ? 1 : 0; return ad - bd || b.st.i - a.st.i || (a.t.ql < b.t.ql ? -1 : 1); });
     var groups = []; rows.forEach(function (r) { var g = groups.filter(function (x) { return x.i === r.st.i; })[0]; if (g) g.n++; else groups.push({ i: r.st.i, name: r.st.name, n: 1 }); }); groups.sort(function (a, b) { return b.i - a.i; });
-    var chips = groups.length > 1 || ts.length > QC_SHOW ? '<div class="qc-chips" role="group" aria-label="Filter trucks by stage"><button type="button" class="qc-chip' + (ui.filter == null ? ' on' : '') + '" data-qc-filter="">All <b>' + ts.length + '</b></button>' + groups.map(function (g) { return '<button type="button" class="qc-chip' + (ui.filter === g.i ? ' on' : '') + '" data-qc-filter="' + g.i + '">' + esc(g.name) + ' <b>' + g.n + '</b></button>'; }).join('') + '</div>' : '';
+    var chips = groups.length > 1 || ts.length > QC_SHOW ? '<div class="qc-chips" role="group" aria-label="Filter by stage"><button type="button" class="qc-chip' + (ui.filter == null ? ' on' : '') + '" data-qc-filter="">All <b>' + ts.length + '</b></button>' + groups.map(function (g) { return '<button type="button" class="qc-chip' + (ui.filter === g.i ? ' on' : '') + '" data-qc-filter="' + g.i + '">' + esc(g.name) + ' <b>' + g.n + '</b></button>'; }).join('') + '</div>' : '';
     var shown = ui.filter == null ? rows : rows.filter(function (r) { return r.st.i === ui.filter; });
     var cut = !ui.all && shown.length > QC_SHOW, vis = cut ? shown.slice(0, QC_SHOW) : shown;
-    return chips + '<div class="qc-rows">' + vis.map(function (r) { var t = r.t, done = r.st.i === last; return '<div class="qc-r' + (done ? ' done' : '') + '"><button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + esc(truckLabel(t)) + '</button><span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span><span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b>' + (t.invoice ? '<a href="billing.html" class="qc-inv">' + esc(t.invoice) + '</a>' : '<button type="button" class="lnk qc-inv" data-qc-invoice="' + t.no + '">Request invoice</button>') + '</span></div>'; }).join('') + '</div>' +
+    return chips + '<div class="qc-rows' + (signed ? ' sel' : '') + '">' + vis.map(function (r) {
+      var t = r.t, done = r.st.i === last;
+      return '<div class="qc-r' + (done ? ' done' : '') + '">' +
+        (signed ? '<span class="qc-ck">' + (t.invoice ? '<svg class="qc-tick" viewBox="0 0 24 24" aria-label="Invoiced"><path d="m5 12 4 4L19 7"/></svg>' : '<input type="checkbox" data-ql-pick="' + t.no + '" aria-label="Select ' + esc(t.ql) + ' for invoicing">') + '</span>' : '') +
+        '<button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + esc(t.ql) + '</button>' +
+        '<span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span>' +
+        '<span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b></span>' +
+        '<span class="qc-invc">' + (t.invoice ? '<a href="billing.html" class="qc-inv">' + esc(t.invoice) + '</a>' : '') + '</span>' +
+      '</div>'; }).join('') + '</div>' +
       (cut ? '<button type="button" class="lnk qc-more" data-qc-all>Show all ' + shown.length + '</button>' : (ui.all && shown.length > QC_SHOW ? '<button type="button" class="lnk qc-more" data-qc-less>Show fewer</button>' : ''));
   }
-  function qcStatusSummary(q, l, isReq) {
-    var ts = lineTrucks(q, l), last = TRUCK_STAGES.length - 1;
-    if (!ts.length) { var st = lineStage(q, l, null); return '<span class="qc-stage">' + trackerHtml(st, true) + '<span>' + esc(st.name) + (st.when ? '<small>' + esc(st.when) + '</small>' : '') + '</span></span><span class="qc-eta">' + (l.eta ? 'Expected <b>' + esc(l.eta) + '</b>' : isReq ? 'Lead time comes with the quote' : 'Lead time on the quote') + '</span>'; }
-    var groups = {}; ts.forEach(function (t) { var st = lineStage(q, l, t); groups[st.i] = groups[st.i] || { name: st.name, n: 0 }; groups[st.i].n++; });
-    var parts = Object.keys(groups).sort(function (a, b) { return b - a; }).map(function (k) { return groups[k].n + ' ' + groups[k].name.replace(/^Built, in transit$/, 'in transit').replace(/^([A-Z])([a-z])/, function (m, a, b) { return a.toLowerCase() + b; }); });
-    var next = ts.filter(function (t) { return t.stage < 4; }).sort(function (a, b) { return b.stage - a.stage; })[0];
-    return '<span class="qc-sum-txt"><b>' + esc(parts.join(' · ')) + '</b>' + (next ? '<small>Next delivery expected ' + esc(next.eta) + '</small>' : '<small>All delivered</small>') + '</span><button type="button" class="qc-toggle" data-qc-trucks aria-expanded="false">' + ts.length + ' truck' + (ts.length > 1 ? 's' : '') + '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>';
-  }
-  function quoteLineHtml(q, l, isReq, n) {
+  function productHtml(q, l, isReq, signed) {
     var it = lineStock(l), kind = it ? it.kind : lineKind(l), pics = it ? invPhotos(it) : [], photo = pics[0] || kindPhoto(kind) || '', fb = 'assets/img/placeholder-' + (/^(bucket|digger|crane)$/.test(kind) ? kind : 'service') + '.svg';
     var items = l.items || [], base = items[0], opts = items.slice(1), priced = !isReq && !!l.unitPrice, unit = it && it.kind === 'trailer' ? 'trailer' : 'truck';
-    var baseNet = base && base[4] ? lineNet(base) : 0;
+    var baseNet = base && base[4] ? lineNet(base) : 0, optTotal = opts.reduce(function (n, o) { return n + (o[4] ? lineNet(o) : 0); }, 0);
     var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : (/\bused\b/i.test(l.spec + ' ' + l.detail) ? 'Used' : /\bnew\b/i.test(l.spec + ' ' + l.detail) ? 'New' : '');
     var kindName = it ? it.kindName : { bucket: 'Bucket truck', digger: 'Digger derrick', crane: 'Crane service truck', service: 'Service truck' }[kind];
-    var cfg = lineConfig(l).map(function (r) { return '<div class="qc-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('');
     var brief = it ? [it.chassis, it.spec].filter(Boolean).join(' · ') : (l.detail || '').split(' · ').filter(function (x) { return !/^stock |^(new|used)\b/i.test(x); }).join(' · ');
-    var pend = '<span class="muted">' + (isReq ? 'Pending' : '—') + '</span>';
-    var baseRow = '<tr class="inv-sub"><td></td><td><span class="inv-k">Base ' + unit + '</span>' + (base ? '<span class="inv-d">' + esc(base[2]) + ' <span class="mono">' + esc(base[0]) + (base[1] ? ' · ' + esc(base[1]) : '') + '</span>' + (priced && base[5] ? '<br>List ' + money(base[4]) + ' less ' + base[5] + '% fleet discount' : '') + '</span>' : '') + '</td><td class="num">' + (l.qty) + '</td><td class="num">' + (priced && base ? money(baseNet) : pend) + '</td><td class="num">' + (priced && base ? money(baseNet * l.qty) : '') + '</td></tr>';
-    var optRows = opts.map(function (o) { var net = o[4] ? lineNet(o) : 0; return '<tr class="inv-sub"><td></td><td><span class="inv-k">+ ' + esc(optName(o[2])) + '</span><span class="inv-d mono">' + esc(o[0]) + '</span></td><td class="num">' + l.qty + '</td><td class="num">' + (priced && net ? money(net) : pend) + '</td><td class="num">' + (priced && net ? money(net * l.qty) : '') + '</td></tr>'; }).join('');
-    return '<tbody class="inv-line" data-ql="' + esc(l.ql) + '">' +
-      '<tr class="inv-main"><td class="inv-n">' + n + '</td><td class="inv-desc"><div class="inv-prod"><div class="qc-photo' + (photo ? '' : ' none') + '"><img src="' + esc(photo || fb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'' + fb + '\';this.parentNode.classList.add(\'none\')"></div><div><strong>' + esc(l.spec) + '</strong><span>' + esc([cond, kindName].filter(Boolean).join(' · ')) + '</span><span class="inv-brief">' + esc(brief) + '</span>' + (isReq ? '' : '<span class="inv-ref mono">' + esc(lineQls(l).length > 1 ? lineQls(l)[0] + ' – ' + lineQls(l)[lineQls(l).length - 1] + ' · one quote line per truck' : l.ql) + '</span>') + '</div></div></td><td class="num inv-qty">' + l.qty + '</td><td class="num">' + (priced ? money(l.unitPrice) : pend) + '</td><td class="num inv-amt">' + (priced ? money(l.unitPrice * l.qty) : '') + '</td></tr>' +
-      baseRow + optRows +
-      '<tr class="inv-cfg" hidden><td></td><td colspan="4"><h4 class="dr-sub">Configuration</h4><dl class="qc-cfg">' + cfg + '</dl></td></tr>' +
-      '<tr class="inv-status"><td></td><td colspan="4"><div class="inv-st"><span class="inv-k">' + (lineTrucks(q, l).length ? 'Build status' : 'Status') + '</span>' + qcStatusSummary(q, l, isReq) + '<button type="button" class="lnk inv-cfg-btn" data-qc-cfg>Full configuration</button></div><div class="qc-status" data-qc-status hidden>' + qcTruckRows(q, l, isReq, { filter: null, all: false }) + '</div></td></tr>' +
-    '</tbody>';
+    var cfg = lineConfig(l).map(function (r) { return '<div class="qc-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('');
+    var optHtml = opts.length ? opts.map(function (o) { return '<li><span>' + esc(optName(o[2])) + '<small class="mono">' + esc(o[0]) + '</small></span><b>' + (priced && o[4] ? money(lineNet(o)) : isReq ? '<span class="muted">on the quote</span>' : '') + '</b></li>'; }).join('') : '<li class="none"><span>No options added</span></li>';
+    var breakdown = priced && base ? '<dl class="qc-sum"><div><dt>Base ' + unit + (base[5] ? '<small>list ' + money(base[4]) + ' − ' + base[5] + '% fleet discount</small>' : '') + '</dt><dd>' + money(baseNet) + '</dd></div>' + (opts.length ? '<div><dt>Options (' + opts.length + ')</dt><dd>' + money(optTotal) + '</dd></div>' : '') + (base[7] ? '<div><dt>FET</dt><dd>' + money(base[7]) + '</dd></div>' : '') + '<div class="tot"><dt>Per ' + unit + '</dt><dd>' + money(l.unitPrice) + '</dd></div>' + (l.qty > 1 ? '<div class="tot"><dt>× ' + l.qty + '</dt><dd>' + money(l.unitPrice * l.qty) + '</dd></div>' : '') + '</dl>' : '';
+    var qls = lineQls(l), ref = isReq ? '' : (qls.length > 1 ? qls[0] + ' – ' + qls[qls.length - 1] : qls[0]);
+    var ts = lineTrucks(q, l), dl = ts.filter(function (t) { return t.stage === 4; }).length, inv = ts.filter(function (t) { return t.invoice; }).length;
+    var sub = ts.length ? (dl + ' of ' + ts.length + ' delivered' + (inv ? ' · ' + inv + ' invoiced' : '')) : (priced ? l.qty + ' ' + unit + (l.qty > 1 ? 's' : '') + (l.eta ? ' · expected ' + l.eta : '') : '');
+    return '<section class="panel pg" data-ql="' + esc(l.ql) + '">' +
+      '<header class="pg-head">' +
+        '<div class="qc-photo' + (photo ? '' : ' none') + '"><img src="' + esc(photo || fb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'' + fb + '\';this.parentNode.classList.add(\'none\')"></div>' +
+        '<div class="pg-title"><h3><span class="qc-qty">' + l.qty + ' ×</span>' + esc(l.spec) + '</h3><p>' + esc([cond, kindName, brief].filter(Boolean).join(' · ')) + '</p>' + (ref ? '<p class="pg-ref mono">' + esc(ref) + (sub ? ' <span>· ' + esc(sub) + '</span>' : '') + '</p>' : (sub ? '<p class="pg-ref">' + esc(sub) + '</p>' : '')) + '</div>' +
+        (priced ? '<div class="qc-price"><div class="big">' + money(l.unitPrice) + '<span>per ' + unit + '</span></div>' + (l.qty > 1 ? '<div class="ext">' + money(l.unitPrice * l.qty) + ' for ' + l.qty + '</div>' : '') + '</div>' : '<div class="qc-price pending"><div class="big">Pricing pending</div><div class="ext">' + (isReq ? 'Sarah confirms price and availability' : 'Sarah is pricing it') + '</div></div>') +
+        '<button type="button" class="qc-toggle" data-qc-toggle aria-expanded="false">Details<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>' +
+      '</header>' +
+      '<div class="qc-body" hidden><div><h4 class="dr-sub">Configuration</h4><dl class="qc-cfg">' + cfg + '</dl>' + (base ? '<p class="qc-item">Item ' + esc(base[0]) + (base[1] ? ' · ' + esc(base[1]) : '') + ' · ' + esc(base[2]) + '</p>' : '') + '</div><div><h4 class="dr-sub">Options added' + (opts.length ? ' <span class="muted">' + opts.length + '</span>' : '') + '</h4><ul class="qc-opts">' + optHtml + '</ul>' + breakdown + '</div></div>' +
+      '<div class="pg-lines" data-qc-status>' + qlRowsHtml(q, l, isReq, { filter: null, all: false }, signed) + '</div>' +
+    '</section>';
   }
   function quoteInvoiceHtml(q, isReq) {
-    var list = sum(q.lines.map(function (l) { return (l.items && l.items[0] && l.items[0][4] ? l.items[0][4] : 0) * l.qty + (l.items || []).slice(1).reduce(function (n, o) { return n + (o[4] || 0) * l.qty; }, 0); }));
-    var total = quoteTotal(q), disc = list - total, priced = !isReq && total > 0;
-    var t = q.terms || defaultTerms();
-    return '<div class="table-scroll"><table class="inv"><colgroup><col class="c-n"><col><col class="c-qty"><col class="c-unit"><col class="c-amt"></colgroup><thead><tr><th class="inv-n">#</th><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>' +
-      q.lines.map(function (l, i) { return quoteLineHtml(q, l, isReq, i + 1); }).join('') +
-      '<tfoot>' + (priced
-        ? (disc > 0 ? '<tr><td colspan="3"></td><td>List price</td><td class="num">' + money(list) + '</td></tr><tr><td colspan="3"></td><td>Fleet discount</td><td class="num">−' + money(disc) + '</td></tr>' : '') +
-          '<tr><td colspan="3"></td><td>FET</td><td class="num">' + esc((t.fet || '').split(' · ')[0] || '—') + '</td></tr>' +
-          '<tr class="inv-total"><td colspan="3"></td><td>' + (q.stage === 'accepted' ? 'Order total' : 'Quote total') + '</td><td class="num">' + money(total) + '</td></tr>' +
-          '<tr class="inv-note"><td colspan="3"></td><td colspan="2">Sales tax, title and registration at delivery' + (t.deliverTo ? ' · delivered to ' + esc(t.deliverTo.split(',')[0]) : '') + '</td></tr>'
-        : '<tr class="inv-total"><td colspan="3"></td><td>' + (isReq ? 'Request total' : 'Quote total') + '</td><td class="num muted">Pending</td></tr><tr class="inv-note"><td colspan="3"></td><td colspan="2">' + (isReq ? 'Sarah confirms availability and pricing, then publishes the quote.' : 'Sarah is pricing it.') + '</td></tr>') +
-      '</tfoot></table></div>';
+    var signed = q.stage === 'accepted';
+    return q.lines.map(function (l) { return productHtml(q, l, isReq, signed); }).join('') +
+      (signed ? '<div class="pg-bar" id="pg-bar" hidden><span id="pg-bar-txt"></span><button type="button" class="lnk" id="pg-bar-clear">Clear</button><button type="button" class="btn btn-primary" id="pg-bar-go">Request invoices</button></div>' : '');
   }
   function wireQuoteLines(q, isReq, wireTrucks) {
-    qsa('.inv-line').forEach(function (grp) {
-      var l = q.lines.filter(function (x) { return x.ql === grp.getAttribute('data-ql'); })[0]; if (!l) return;
-      var ui = { filter: null, all: false }, box = grp.querySelector('[data-qc-status]'), tg = grp.querySelector('[data-qc-trucks]'), cfgRow = grp.querySelector('.inv-cfg'), cfgBtn = grp.querySelector('[data-qc-cfg]');
-      if (tg) tg.addEventListener('click', function () { var open = box.hidden; box.hidden = !open; tg.setAttribute('aria-expanded', open); });
-      if (cfgBtn) cfgBtn.addEventListener('click', function () { cfgRow.hidden = !cfgRow.hidden; cfgBtn.textContent = cfgRow.hidden ? 'Full configuration' : 'Hide configuration'; });
-      function paint() { box.innerHTML = qcTruckRows(q, l, isReq, ui); wire(); }
+    var picked = {};
+    function bar() { var b = $('pg-bar'); if (!b) return; var ids = Object.keys(picked).filter(function (k) { return picked[k]; }), ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
+    qsa('.pg').forEach(function (card) {
+      var l = q.lines.filter(function (x) { return x.ql === card.getAttribute('data-ql'); })[0]; if (!l) return;
+      var ui = { filter: null, all: false }, box = card.querySelector('[data-qc-status]'), body = card.querySelector('.qc-body'), tg = card.querySelector('[data-qc-toggle]');
+      tg.addEventListener('click', function () { var open = body.hidden; body.hidden = !open; tg.setAttribute('aria-expanded', open); tg.firstChild.textContent = open ? 'Hide details' : 'Details'; });
+      function paint() { box.innerHTML = qlRowsHtml(q, l, isReq, ui, q.stage === 'accepted'); wire(); }
       function wire() {
         qsa('[data-qc-filter]', box).forEach(function (b) { b.addEventListener('click', function () { var v = b.getAttribute('data-qc-filter'); ui.filter = v === '' ? null : +v; ui.all = false; paint(); }); });
         var all = box.querySelector('[data-qc-all]'); if (all) all.addEventListener('click', function () { ui.all = true; paint(); });
         var less = box.querySelector('[data-qc-less]'); if (less) less.addEventListener('click', function () { ui.all = false; paint(); });
+        qsa('[data-ql-pick]', box).forEach(function (c) { c.checked = !!picked[c.getAttribute('data-ql-pick')]; c.addEventListener('change', function () { picked[c.getAttribute('data-ql-pick')] = c.checked; bar(); }); });
         qsa('[data-qc-invoice]', box).forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-qc-invoice'); })[0]; confirmInline(b.closest('.qc-r'), 'Request the invoice for ' + t.ql + ', ' + money(t.price) + ' before tax and title?', 'Request invoice', function () { requestInvoice(q, [t]); }); }); });
         wireTrucks(box);
       }
       wire();
     });
+    var go = $('pg-bar-go'); if (go) go.addEventListener('click', function () { var ts = Object.keys(picked).filter(function (k) { return picked[k]; }).map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); if (ts.length) requestInvoice(q, ts); });
+    var cl = $('pg-bar-clear'); if (cl) cl.addEventListener('click', function () { picked = {}; qsa('[data-ql-pick]').forEach(function (c) { c.checked = false; }); bar(); });
   }
   function termsHtml(q) {
     var t = q.terms || defaultTerms();
@@ -466,7 +472,7 @@
       if (q.stage === 'ready') acts = '<button type="button" class="btn btn-primary" id="q-rbo">Request the buyer\u2019s order<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button type="button" class="lnk" id="q-changes">Ask for changes</button><button type="button" class="lnk" id="q-decline">Decline</button>';
       else if (q.stage === 'rbo') acts = '<span class="wo-note">Sarah is preparing the buyer\u2019s order in Salesforce. It arrives by email for e-signature, usually the same day.</span>';
       else if (q.stage === 'rboSent') acts = '<a href="#" class="btn btn-primary" id="q-sign">Open the buyer\u2019s order to sign<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><span class="wo-note">Sent ' + esc(q.updated) + ' to ' + esc((q.terms || defaultTerms()).payer.split(' · ')[0]) + ' · DocuSign</span>';
-      if (Q_ORDER[q.stage] >= 2 && q.stage !== 'declined') second = (q.stage === 'accepted' ? '<button type="button" class="lnk" id="q-invoice">Invoices</button>' : '') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>' + (q.rboDoc ? '<a href="#" class="lnk">Buyer\u2019s order PDF</a>' : '');
+      if (Q_ORDER[q.stage] >= 2 && q.stage !== 'declined') second = (q.stage === 'accepted' ? '<button type="button" class="lnk" id="q-invoice">Request invoices</button>' : '') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>' + (q.rboDoc ? '<a href="#" class="lnk">Buyer\u2019s order PDF</a>' : '');
     } else {
       if (q.stage === 'review') acts = '<button type="button" class="btn btn-primary" id="q-send">Send quote to customer</button>';
       else if (q.stage === 'requested') acts = '<button type="button" class="btn btn-primary" id="q-review">Start review</button>';
@@ -1133,8 +1139,8 @@
     openDrawer({
       kind: t.stages[t.stage][0], title: truckLabel(t), meta: t.spec + ' · ' + t.detail,
       body: '<dl class="dr-facts"><dt>Order</dt><dd>' + esc(truckLabel(t)) + ' · placed ' + t.ordered + ' <span class="muted mono">' + t.no + '</span></dd>' + (t.quote ? '<dt>Salesforce</dt><dd>' + t.quote + ' · ' + t.ql + '</dd>' : '') + (t.invoice ? '<dt>Invoice</dt><dd><a href="billing.html" class="lnk">' + esc(t.invoice) + '</a></dd>' : '') + '<dt>Expected</dt><dd>' + esc(t.eta) + '</dd><dt>Built at</dt><dd>' + esc(t.where) + '</dd><dt>Price</dt><dd>' + money(t.price) + '</dd></dl><ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>',
-      foot: '<a href="#" class="btn btn-ghost">Build sheet</a><button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
-      after: function () { $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · order ' + t.no, lastPrice: t.price }); }); }
+      foot: (t.invoice ? '<a href="billing.html" class="btn btn-ghost">Invoice ' + esc(t.invoice) + '</a>' : '<button type="button" class="btn btn-primary" id="t-invoice">Request invoice</button>') + '<a href="#" class="lnk">Build sheet</a><button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
+      after: function () { var ti = $('t-invoice'); if (ti) ti.addEventListener('click', function () { var q = S.quotes.filter(function (x) { return x.no === t.quote; })[0]; if (q) requestInvoice(q, [t]); }); $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · order ' + t.no, lastPrice: t.price }); }); }
     });
   }
 
