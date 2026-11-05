@@ -338,7 +338,8 @@
   }
   function wireQuoteLines(q, isReq, wireTrucks) {
     var picked = {};
-    function bar() { var b = $('pg-bar'); if (!b) return; var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); picked = {}; ids.forEach(function (id) { picked[id] = true; }); var ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
+    var linesBox = $('q-lines'); if (linesBox && !linesBox.w_bar) { linesBox.w_bar = true; linesBox.addEventListener('change', function (e) { if (e.target && e.target.matches && e.target.matches('[data-ql-pick]')) bar(); }); linesBox.addEventListener('click', function (e) { if (e.target && e.target.matches && e.target.matches('[data-ql-pick]')) setTimeout(bar, 0); }); }
+    function bar() { var b = $('pg-bar'); if (!b) return; var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); picked = {}; ids.forEach(function (id) { picked[id] = true; }); if (!ids.length) { b.hidden = true; return; } var ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
     qsa('.pg').forEach(function (card) {
       var l = q.lines.filter(function (x) { return x.ql === card.getAttribute('data-ql'); })[0]; if (!l) return;
       var ui = { filter: null, all: false }, box = card.querySelector('[data-qc-status]');
