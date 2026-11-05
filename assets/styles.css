@@ -2225,3 +2225,17 @@ table.inv col.c-unit { width: 100px; } table.inv col.c-amt { width: 112px; }
   .pg .qc-invc { min-width: 0; }
   .pg-bar { bottom: 76px; flex-wrap: wrap; }
 }
+
+/* invoice request drawer */
+.iq-group { margin-top: 14px; } .iq-group:first-child { margin-top: 0; }
+.iq-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 0 0 6px; border-bottom: 1px solid var(--line-strong); font-size: 0.86rem; }
+.iq-head .lnk { font-size: 0.78rem; }
+.form label.iq-row { display: grid; grid-template-columns: 18px 112px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; margin: 0; border-bottom: 1px solid var(--line); font-size: 0.84rem; font-weight: 400; text-align: left; cursor: pointer; }
+.form label.iq-row > * { margin: 0; }
+.iq-row input { width: 15px; height: 15px; margin: 0; accent-color: var(--red); }
+.iq-row .iq-ql { font-weight: 600; font-size: 0.8rem; color: var(--ink); }
+.iq-row .iq-st { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iq-row b { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.iq-row.done { cursor: default; } .iq-row.done .iq-ql, .iq-row.done b { color: var(--muted); }
+.iq-total { font-size: 0.84rem; color: var(--muted); margin-left: 4px; }
+@media (max-width: 600px) { .form label.iq-row { grid-template-columns: 18px minmax(0, 1fr) auto; } .iq-row .iq-st { grid-column: 2 / 4; white-space: normal; font-size: 0.78rem; } }

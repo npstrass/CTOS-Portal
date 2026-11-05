@@ -336,12 +336,12 @@
   }
   function wireQuoteLines(q, isReq, wireTrucks) {
     var picked = {};
-    function bar() { var b = $('pg-bar'); if (!b) return; var ids = Object.keys(picked).filter(function (k) { return picked[k]; }), ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
+    function bar() { var b = $('pg-bar'); if (!b) return; var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); picked = {}; ids.forEach(function (id) { picked[id] = true; }); var ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
     qsa('.pg').forEach(function (card) {
       var l = q.lines.filter(function (x) { return x.ql === card.getAttribute('data-ql'); })[0]; if (!l) return;
       var ui = { filter: null, all: false }, box = card.querySelector('[data-qc-status]'), body = card.querySelector('.qc-body'), tg = card.querySelector('[data-qc-toggle]');
       tg.addEventListener('click', function () { var open = body.hidden; body.hidden = !open; tg.setAttribute('aria-expanded', open); tg.firstChild.textContent = open ? 'Hide details' : 'Details'; });
-      function paint() { box.innerHTML = qlRowsHtml(q, l, isReq, ui, q.stage === 'accepted'); wire(); }
+      function paint() { box.innerHTML = qlRowsHtml(q, l, isReq, ui, q.stage === 'accepted'); wire(); bar(); }
       function wire() {
         qsa('[data-qc-filter]', box).forEach(function (b) { b.addEventListener('click', function () { var v = b.getAttribute('data-qc-filter'); ui.filter = v === '' ? null : +v; ui.all = false; paint(); }); });
         var all = box.querySelector('[data-qc-all]'); if (all) all.addEventListener('click', function () { ui.all = true; paint(); });
@@ -352,8 +352,8 @@
       }
       wire();
     });
-    var go = $('pg-bar-go'); if (go) go.addEventListener('click', function () { var ts = Object.keys(picked).filter(function (k) { return picked[k]; }).map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); if (ts.length) requestInvoice(q, ts); });
-    var cl = $('pg-bar-clear'); if (cl) cl.addEventListener('click', function () { picked = {}; qsa('[data-ql-pick]').forEach(function (c) { c.checked = false; }); bar(); });
+    var go = $('pg-bar-go'); if (go) go.addEventListener('click', function () { var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); if (ids.length) flowInvoiceQls(q, ids); });
+    var cl = $('pg-bar-clear'); if (cl) cl.addEventListener('click', function () { qsa('[data-ql-pick]').forEach(function (c) { c.checked = false; }); bar(); });
   }
   function termsHtml(q) {
     var t = q.terms || defaultTerms();
@@ -383,17 +383,26 @@
     addNotification({ title: (made.length > 1 ? made.length + ' invoices issued' : 'Invoice ' + made[0] + ' issued') + ' on ' + q.no, text: money(sum(trucks.map(function (t) { return t.price; }))) + ' before tax and title, one invoice per truck. Pay from Billing, or finance it.', href: 'billing.html' });
     closeDrawer(); toast(made.length > 1 ? made.length + ' invoices requested. They are on Billing.' : 'Invoice ' + made[0] + ' requested. It is on Billing.'); renderPage();
   }
-  function flowInvoiceQls(q) {
-    var all = []; q.lines.forEach(function (l) { all = all.concat(lineTrucks(q, l)); });
-    var open = all.filter(function (t) { return !t.invoice; }), done = all.filter(function (t) { return t.invoice; });
+  function flowInvoiceQls(q, preselect) {
+    var pre = preselect || [];
+    var groups = q.lines.map(function (l) { var ts = lineTrucks(q, l); return { l: l, open: ts.filter(function (t) { return !t.invoice; }), done: ts.filter(function (t) { return t.invoice; }) }; }).filter(function (g) { return g.open.length || g.done.length; });
+    var nOpen = sum(groups.map(function (g) { return g.open.length; })), nDone = sum(groups.map(function (g) { return g.done.length; }));
+    function row(t) { var inv = t.invoice ? S.invoices.filter(function (x) { return x.no === t.invoice; })[0] || {} : null; return '<label class="iq-row' + (inv ? ' done' : '') + '">' + (inv ? '<svg class="qc-tick" viewBox="0 0 24 24"><path d="m5 12 4 4L19 7"/></svg>' : '<input type="checkbox" name="iq" value="' + t.no + '"' + (pre.indexOf(t.no) >= 0 ? ' checked' : '') + '>') + '<span class="iq-ql mono">' + esc(t.ql) + '</span><span class="iq-st">' + (inv ? esc(t.invoice) + (inv.status === 'paid' ? ' · paid' : ' · due ' + esc(inv.due || '')) : t.stage === 4 ? 'Delivered ' + esc(t.eta) : esc(t.stages[t.stage][0]) + ' · expected ' + esc(t.eta)) + '</span><b>' + money(t.price) + '</b></label>'; }
+    var body = groups.map(function (g, i) { return '<section class="iq-group"><div class="iq-head"><strong>' + g.l.qty + ' × ' + esc(g.l.spec) + '</strong>' + (g.open.length > 1 ? '<button type="button" class="lnk" data-iq-all="' + i + '">Select all ' + g.open.length + '</button>' : '') + '</div>' + g.open.map(row).join('') + g.done.map(row).join('') + '</section>'; }).join('');
     openDrawer({
-      kind: 'Request invoices · ' + q.no, title: open.length ? open.length + ' truck' + (open.length > 1 ? 's' : '') + ' not yet invoiced' : 'Every truck is invoiced', meta: 'Each truck is invoiced on its own quote line. Request them any time after signing, for instance to match a lender\u2019s funding schedule.',
-      body: '<form class="form" id="iq-form">' + (open.length ? '<div class="list li-list">' + open.map(function (t) { return '<label class="row fig li"><input type="checkbox" name="iq" value="' + t.no + '"' + (t.stage === 4 ? ' checked' : '') + '> <span><strong>' + esc(t.ql) + '</strong><small>' + esc(t.spec) + ' · ' + (t.stage === 4 ? 'delivered ' + esc(t.eta) : esc(t.stages[t.stage][0].toLowerCase()) + ' · expected ' + esc(t.eta)) + '</small></span><b>' + money(t.price) + '</b></label>'; }).join('') + '</div>' : '<p class="form-note">All ' + all.length + ' trucks on this order have been invoiced.</p>') +
-        (done.length ? '<h4 class="dr-sub">Already invoiced</h4><div class="list li-list">' + done.map(function (t) { var inv = S.invoices.filter(function (x) { return x.no === t.invoice; })[0] || {}; return '<div class="row fig li"><span><strong>' + esc(t.ql) + '</strong><small>' + esc(t.invoice) + (inv.status === 'paid' ? ' · paid ' + esc(inv.paidOn || '') : inv.due ? ' · due ' + esc(inv.due) : '') + '</small></span><b>' + money(t.price) + '</b></div>'; }).join('') + '</div>' : '') + '</form>',
-      foot: (open.length ? '<button type="submit" form="iq-form" class="btn btn-primary">Request invoice' + (open.length > 1 ? 's' : '') + '</button>' : '') + '<a href="billing.html" class="lnk">Go to Billing</a>',
-      after: function () { var f = $('iq-form'); if (f) f.addEventListener('submit', function (e) { e.preventDefault(); var picked = qsa('input[name="iq"]:checked', f).map(function (c) { return S.trucks.filter(function (t) { return t.no === c.value; })[0]; }); if (picked.length) requestInvoice(q, picked); }); }
+      kind: 'Request invoices · ' + q.no, title: nOpen ? nOpen + ' quote line' + (nOpen > 1 ? 's' : '') + ' not yet invoiced' : 'Every quote line is invoiced', meta: 'One invoice per quote line, any time after signing.' + (nDone ? ' ' + nDone + ' already invoiced.' : ''),
+      body: '<form class="form iq" id="iq-form">' + body + '</form>',
+      foot: '<button type="submit" form="iq-form" class="btn btn-primary" id="iq-go" disabled>Request invoices</button><span class="iq-total" id="iq-total"></span><a href="billing.html" class="lnk">Go to Billing</a>',
+      after: function () {
+        var f = $('iq-form'); if (!f) return;
+        function tally() { var ts = qsa('input[name="iq"]:checked', f).map(function (c) { return S.trucks.filter(function (t) { return t.no === c.value; })[0]; }); $('iq-go').disabled = !ts.length; $('iq-go').textContent = ts.length ? 'Request ' + ts.length + ' invoice' + (ts.length > 1 ? 's' : '') : 'Request invoices'; $('iq-total').textContent = ts.length ? money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title' : ''; }
+        f.addEventListener('change', tally); tally();
+        qsa('[data-iq-all]', f).forEach(function (b) { b.addEventListener('click', function () { qsa('input[name="iq"]', b.closest('.iq-group')).forEach(function (c) { c.checked = true; }); tally(); }); });
+        f.addEventListener('submit', function (e) { e.preventDefault(); var picked = qsa('input[name="iq"]:checked', f).map(function (c) { return S.trucks.filter(function (t) { return t.no === c.value; })[0]; }); if (picked.length) requestInvoice(q, picked); });
+      }
     });
   }
+
   function flowRequestQuote(stock) {
     var stocks = Array.isArray(stock) ? stock : (stock ? [stock] : []);
     var n = Math.max(1, stocks.length);
