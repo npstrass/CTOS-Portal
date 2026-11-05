@@ -236,6 +236,106 @@
       l.items.map(function (it, i) { return '<tr class="' + (i ? 'opt' : 'base') + '"><td class="mono">' + esc(it[0]) + (it[1] ? '<small>' + esc(it[1]) + '</small>' : '') + '</td><td class="pname">' + esc(it[2]) + (it[3] ? '<small>' + esc(it[3]) + '</small>' : '') + '</td><td class="num">' + (it[4] ? money(it[4]) : '<span class="muted">Pending</span>') + '</td><td class="num">' + (it[5] ? it[5] + '%' : '') + '</td><td class="num">' + (it[6] ? '−' + money(it[6]) : '') + '</td><td class="num"><strong>' + (it[4] ? money(lineNet(it)) : '') + '</strong></td></tr>'; }).join('') +
       '<tr class="pkg"><td colspan="5">Total package price' + (l.qty > 1 ? ' · each of ' + l.qty : '') + '</td><td class="num"><strong>' + (linePackage(l) ? money(linePackage(l)) : '<span class="muted">Pending</span>') + '</strong></td></tr></tbody></table></div>';
   }
+
+  // ----- Quote line card: what the customer is buying, how it is configured, what it costs -----
+  function cfgLabel(seg) {
+    var t = seg.toLowerCase();
+    if (/^stock /.test(t)) return null;
+    if (/^(new|used)\b/.test(t)) return 'Condition';
+    if (/cummins|detroit|paccar|px-7|b6\.7|dd8|l9|7\.3l|6\.7l|gas\b|diesel|\bhp\b/.test(t)) return 'Engine';
+    if (/allison|transmission|automatic|manual/.test(t)) return 'Transmission';
+    if (/\b4x2\b|\b4x4\b|\b6x4\b|\b6x6\b|axle/.test(t)) return 'Drive';
+    if (/body\b/.test(t)) return 'Body';
+    if (/crane/.test(t)) return 'Crane';
+    if (/aerial|bucket|\bat40|\bhr\d|\baa\d|vst|\bsst|optima|tc55|lt40|platform/.test(t)) return 'Aerial';
+    if (/digger|derrick|\bdc\d|commander|auger|pole claw/.test(t)) return 'Derrick';
+    if (/trailer|ton\b|well\b|lowboy/.test(t)) return 'Trailer';
+    if (/^(white|black|red|blue|gray|grey|silver|yellow|orange|green)\b/.test(t)) return 'Color';
+    if (/\bmi\b|\bhrs\b|hours|miles/.test(t)) return 'Usage';
+    if (/certified|dielectric|warranty/.test(t)) return 'Inspection';
+    if (/inverter|compressor|outrigger|strobe|camera|heater|pto/.test(t)) return 'Equipment';
+    return 'Spec';
+  }
+  function lineStock(l) { var m = /stock (S-\d+)/.exec(l.detail || ''); return m ? S.inventory.filter(function (x) { return x.stock === m[1]; })[0] : null; }
+  function lineKind(l) { var t = (l.spec + ' ' + l.detail).toLowerCase(); return /digger|derrick|commander|\bdc\d/.test(t) ? 'digger' : /crane|imt|stinger/.test(t) ? 'crane' : /bucket|aerial|\bhr\d|\baa\d|\bxt\d|vst|\bat\d|optima|tc55|lt40|forestry/.test(t) ? 'bucket' : 'service'; }
+  function lineConfig(l) {
+    var it = lineStock(l), rows = [];
+    if (it) {
+      rows.push(['Condition', it.cond === 'new' ? 'New' : 'Used' + (it.miles ? ' · ' + num(it.miles) + ' mi' : '') + (it.hours ? ' · ' + num(it.hours) + ' hrs' : '')]);
+      if (it.kind !== 'trailer') rows.push(['Chassis', it.year + ' ' + it.make + ' ' + it.model + (it.chassis ? ' · ' + it.chassis : '')]);
+      else rows.push(['Trailer', it.year + ' ' + it.make + ' ' + it.model + (it.chassis ? ' · ' + it.chassis : '')]);
+      rows.push([it.kind === 'trailer' ? 'Type' : it.kind === 'chassis' ? 'Body' : 'Equipment', it.equip]);
+      if (it.spec) rows.push(['Spec', it.spec]);
+      if (it.color) rows.push(['Color', it.color]);
+      rows.push(['Stock #', it.stock + ' · ' + it.loc]);
+      return rows;
+    }
+    (l.detail || '').split(' · ').forEach(function (seg) { var k = cfgLabel(seg); if (!k) return; var prev = rows.filter(function (r) { return r[0] === k; })[0]; if (prev) prev[1] += ' · ' + seg; else rows.push([k, seg.charAt(0).toUpperCase() + seg.slice(1)]); });
+    return rows;
+  }
+  function optName(n) { return titleCase(n).replace(/\(2 In The Grill \/ 2 At The Rear\)/, '(2 grill, 2 rear)').replace(/\bKw\b/g, 'kW').replace(/\bAt\b/g, 'at').replace(/\bWith\b/g, 'with').replace(/\bAnd\b/g, 'and'); }
+  var QC_SHOW = 6;
+  function qcStatusHtml(q, l, it, isReq, ui) {
+    var ts = lineTrucks(q, l), unit = it && it.kind === 'trailer' ? 'trailer' : 'truck';
+    if (!ts.length) {
+      return '<div class="qc-truck one"><div><strong>' + l.qty + ' ' + unit + (l.qty > 1 ? 's' : '') + '</strong><span>' + (l.eta ? 'Expected ' + esc(l.eta) : isReq ? 'Lead time comes with the quote' : 'Lead time on the quote') + '</span></div><div class="ql-track">' + trackerHtml(lineStage(q, l, null)) + '</div></div>';
+    }
+    var rows = ts.map(function (t) { return { t: t, st: lineStage(q, l, t) }; });
+    var last = TRUCK_STAGES.length - 1; rows.sort(function (a, b) { var ad = a.st.i === last ? 1 : 0, bd = b.st.i === last ? 1 : 0; return ad - bd || b.st.i - a.st.i || (a.t.no < b.t.no ? -1 : 1); }); // closest to delivery first, delivered trucks last
+    var groups = []; rows.forEach(function (r) { var g = groups.filter(function (x) { return x.i === r.st.i; })[0]; if (g) g.n++; else groups.push({ i: r.st.i, name: r.st.name, n: 1 }); }); groups.sort(function (a, b) { return b.i - a.i; });
+    var chips = '<div class="qc-chips" role="group" aria-label="Filter trucks by stage"><button type="button" class="qc-chip' + (ui.filter == null ? ' on' : '') + '" data-qc-filter="">All <b>' + ts.length + '</b></button>' + groups.map(function (g) { return '<button type="button" class="qc-chip' + (ui.filter === g.i ? ' on' : '') + '" data-qc-filter="' + g.i + '">' + esc(g.name) + ' <b>' + g.n + '</b></button>'; }).join('') + '</div>';
+    var shown = ui.filter == null ? rows : rows.filter(function (r) { return r.st.i === ui.filter; });
+    var cut = !ui.all && shown.length > QC_SHOW, vis = cut ? shown.slice(0, QC_SHOW) : shown;
+    var list = '<div class="qc-rows">' + vis.map(function (r) { var t = r.t, done = r.st.i === TRUCK_STAGES.length - 1; return '<div class="qc-r' + (done ? ' done' : '') + '"><button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button><span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span><span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b></span></div>'; }).join('') + '</div>' +
+      (cut ? '<button type="button" class="lnk qc-more" data-qc-all>Show all ' + shown.length + '</button>' : (ui.all && shown.length > QC_SHOW ? '<button type="button" class="lnk qc-more" data-qc-less>Show fewer</button>' : ''));
+    return (groups.length > 1 || ts.length > QC_SHOW ? chips : '') + list;
+  }
+  function quoteLineHtml(q, l, isReq) {
+    var it = lineStock(l), pics = it ? invPhotos(it) : [], photo = pics[0] || '', fb = 'assets/img/placeholder-' + (it ? (it.kind === 'trailer' || it.kind === 'chassis' ? 'service' : it.kind) : lineKind(l)) + '.svg';
+    var items = l.items || [], base = items[0], opts = items.slice(1), priced = !isReq && !!l.unitPrice;
+    var baseNet = base && base[4] ? lineNet(base) : 0, optTotal = opts.reduce(function (n, o) { return n + (o[4] ? lineNet(o) : 0); }, 0);
+    var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : (/\bused\b/i.test(l.spec + ' ' + l.detail) ? 'Used' : /\bnew\b/i.test(l.spec + ' ' + l.detail) ? 'New' : '');
+    var kind = it ? it.kindName : { bucket: 'Bucket truck', digger: 'Digger derrick', crane: 'Crane service truck', service: 'Service truck' }[lineKind(l)];
+    var cfgRows = lineConfig(l), cfg = cfgRows.map(function (r) { return '<div class="qc-row"><dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd></div>'; }).join('');
+    var brief = (it ? [it.chassis, it.spec].filter(Boolean).join(' · ') : (l.detail || '').split(' · ').filter(function (x) { return !/^stock |^(new|used)\b/i.test(x); }).join(' · ')) + (opts.length ? ' · ' + opts.length + ' option' + (opts.length > 1 ? 's' : '') : '');
+    var optHtml = opts.length ? opts.map(function (o) { return '<li><span>' + esc(optName(o[2])) + '<small class="mono">' + esc(o[0]) + '</small></span><b>' + (priced && o[4] ? money(lineNet(o)) : isReq ? '<span class="muted">on the quote</span>' : '') + '</b></li>'; }).join('') : '<li class="none"><span>No options added</span></li>';
+    var priceHtml = priced
+      ? '<div class="qc-price"><div class="big">' + money(l.unitPrice) + '<span>per ' + (it && it.kind === 'trailer' ? 'trailer' : 'truck') + '</span></div>' + (l.qty > 1 ? '<div class="ext">' + money(l.unitPrice * l.qty) + ' for ' + l.qty + '</div>' : '') + '</div>'
+      : '<div class="qc-price pending"><div class="big">Pricing pending</div><div class="ext">' + (isReq ? 'Sarah confirms price and availability' : 'Sarah is pricing it') + '</div></div>';
+    var breakdown = priced && base ? '<dl class="qc-sum">' +
+        '<div><dt>Base truck' + (base[5] ? '<small>list ' + money(base[4]) + ' − ' + base[5] + '% fleet discount</small>' : '') + '</dt><dd>' + money(baseNet) + '</dd></div>' +
+        (opts.length ? '<div><dt>Options (' + opts.length + ')</dt><dd>' + money(optTotal) + '</dd></div>' : '') +
+        (base[7] ? '<div><dt>FET</dt><dd>' + money(base[7]) + '</dd></div>' : '') +
+        '<div class="tot"><dt>Per truck</dt><dd>' + money(l.unitPrice) + '</dd></div>' + (l.qty > 1 ? '<div class="tot"><dt>× ' + l.qty + ' trucks</dt><dd>' + money(l.unitPrice * l.qty) + '</dd></div>' : '') + '</dl>' : '';
+    return '<section class="panel qc" data-ql="' + esc(l.ql) + '">' +
+      '<header class="qc-head">' +
+        '<div class="qc-photo' + (photo ? '' : ' none') + '"><img src="' + esc(photo || fb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'' + fb + '\';this.parentNode.classList.add(\'none\')"></div>' +
+        '<div class="qc-title"><h3><span class="qc-qty">' + l.qty + ' ×</span>' + esc(l.spec) + '</h3><p>' + esc([cond, kind].filter(Boolean).join(' · ')) + '</p><p class="qc-brief">' + esc(brief) + '</p></div>' +
+        priceHtml +
+        '<button type="button" class="qc-toggle" data-qc-toggle aria-expanded="false">Details<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>' +
+      '</header>' +
+      '<div class="qc-body" hidden>' +
+        '<div><h4 class="dr-sub">Configuration</h4><dl class="qc-cfg">' + cfg + '</dl>' + (base ? '<p class="qc-item">Item ' + esc(base[0]) + (base[1] ? ' · ' + esc(base[1]) : '') + ' · ' + esc(base[2]) + '</p>' : '') + '</div>' +
+        '<div><h4 class="dr-sub">Options added' + (opts.length ? ' <span class="muted">' + opts.length + '</span>' : '') + '</h4><ul class="qc-opts">' + optHtml + '</ul>' + breakdown + (isReq ? '' : '<p class="qc-item">Quote line ' + esc(l.ql) + '</p>') + '</div>' +
+      '</div>' +
+      '<footer class="qc-foot"><div class="qc-status" data-qc-status>' + qcStatusHtml(q, l, it, isReq, { filter: null, all: false }) + '</div></footer>' +
+    '</section>';
+  }
+  function wireQuoteLines(q, isReq, wireTrucks) {
+    qsa('.qc').forEach(function (card) {
+      var l = q.lines.filter(function (x) { return x.ql === card.getAttribute('data-ql'); })[0]; if (!l) return;
+      var it = lineStock(l), ui = { filter: null, all: false }, body = card.querySelector('.qc-body'), tg = card.querySelector('[data-qc-toggle]');
+      tg.addEventListener('click', function () { var open = body.hidden; body.hidden = !open; tg.setAttribute('aria-expanded', open); tg.firstChild.textContent = open ? 'Hide details' : 'Details'; });
+      function paintStatus() { var box = card.querySelector('[data-qc-status]'); box.innerHTML = qcStatusHtml(q, l, it, isReq, ui); wire(box); }
+      function wire(box) {
+        qsa('[data-qc-filter]', box).forEach(function (b) { b.addEventListener('click', function () { var v = b.getAttribute('data-qc-filter'); ui.filter = v === '' ? null : +v; ui.all = false; paintStatus(); }); });
+        var all = box.querySelector('[data-qc-all]'); if (all) all.addEventListener('click', function () { ui.all = true; paintStatus(); });
+        var less = box.querySelector('[data-qc-less]'); if (less) less.addEventListener('click', function () { ui.all = false; paintStatus(); });
+        wireTrucks(box);
+      }
+      wire(card.querySelector('[data-qc-status]'));
+    });
+  }
   function termsHtml(q) {
     var t = q.terms || defaultTerms();
     return '<dl class="dr-facts terms"><dt>Payer</dt><dd>' + esc(t.payer) + '</dd><dt>Financing</dt><dd>' + esc(t.financing) + '</dd><dt>Lienholder</dt><dd>' + esc(t.lienholder || 'None') + '</dd><dt>Deliver to</dt><dd>' + esc(t.deliverTo) + '</dd><dt>PO</dt><dd>' + esc(t.po || 'None') + '</dd><dt>FET</dt><dd>' + esc(t.fet) + '</dd><dt>Title</dt><dd>' + esc(t.title) + '</dd></dl>';
@@ -292,14 +392,14 @@
   function lineTrucks(q, l) { return S.trucks.filter(function (t) { return t.quote === q.no && t.ql === l.ql; }); }
   function lineStage(q, l, t) {
     if (q.stage === 'declined') return { i: -1, name: 'Declined', when: q.updated };
-    if (t) return { i: 3 + t.stage, name: t.stage === 0 ? 'Signed, ordered' : t.stages[t.stage][0], when: t.stages[t.stage][1] || '', eta: t.eta, where: t.where };
+    if (t) return { i: 3 + t.stage, name: t.stage === 0 ? 'Ordered' : t.stage === 4 ? 'Delivered' : t.stages[t.stage][0], when: t.stages[t.stage][1] || '', eta: t.eta, where: t.where };
     if (q.stage === 'accepted') return { i: 3, name: 'Signed', when: q.updated };
     if (q.stage === 'rbo' || q.stage === 'rboSent') return { i: 2, name: q.stage === 'rbo' ? 'Buyer\u2019s order requested' : 'Out for signature', when: q.updated, eta: l.eta };
     if (q.stage === 'ready') return { i: 1, name: 'Quoted', when: q.updated, eta: l.eta };
     return { i: 0, name: q.stage === 'review' ? 'In review at CTOS' : 'Requested', when: q.requested };
   }
   function trackerHtml(st, compact) {
-    return '<span class="trk' + (st.i < 0 ? ' dead' : '') + '" role="img" aria-label="' + esc(st.name) + ', step ' + (st.i + 1) + ' of ' + TRUCK_STAGES.length + '">' + TRUCK_STAGES.map(function (n, k) { return '<i class="' + (k < st.i ? 'done' : k === st.i ? 'now' : '') + '" title="' + n + '"></i>'; }).join('') + '</span>' + (compact ? '' : '<b class="trk-name">' + esc(st.name) + '</b><small class="trk-when">' + esc(st.when || '') + (st.eta && st.i >= 3 && st.i < 7 ? ' · expected ' + esc(st.eta) : '') + '</small>');
+    return '<span class="trk' + (st.i < 0 ? ' dead' : '') + '" role="img" aria-label="' + esc(st.name) + ', step ' + (st.i + 1) + ' of ' + TRUCK_STAGES.length + '">' + TRUCK_STAGES.map(function (n, k) { return '<i class="' + (k < st.i || st.i === TRUCK_STAGES.length - 1 ? 'done' : k === st.i ? 'now' : '') + '" title="' + n + '"></i>'; }).join('') + '</span>' + (compact ? '' : '<b class="trk-name">' + esc(st.name) + '</b><small class="trk-when">' + esc(st.when || '') + (st.eta && st.i >= 3 && st.i < 7 ? ' · expected ' + esc(st.eta) : '') + '</small>');
   }
   function renderQuotes() {
     var list = $('quote-rows'); if (!list) return;
@@ -343,17 +443,14 @@
       else acts = '<a href="#" class="btn btn-ghost">Open in Salesforce</a>';
     }
     var finding = q.stage === 'ready' ? 'Sarah priced this on ' + q.updated + ' and it is valid until ' + q.validUntil + '. When you are ready, request the buyer\u2019s order: Sarah generates it from this quote and sends it for e-signature. Nothing is ordered until that is signed.' : q.stage === 'rbo' ? 'Buyer\u2019s order requested ' + q.updated + '. Sarah generates it in Salesforce and it arrives for e-signature.' : q.stage === 'rboSent' ? 'The buyer\u2019s order went out for signature on ' + q.updated + '. Signing it places the order; each truck then gets its own build status below.' : q.stage === 'accepted' ? 'Buyer\u2019s order signed ' + q.updated + '. Each truck below has its own build status; expected dates update as the build moves.' : q.stage === 'declined' ? 'Declined ' + q.updated + '. Ask Sarah for a revised quote any time.' : q.stage === 'review' ? 'Sarah is confirming availability and pricing now. The quote itself, with its Q number and Salesforce record, arrives when she publishes it, usually within a business day.' : 'Sent to Sarah ' + q.requested + '. She confirms availability and pricing and publishes the quote, usually within a business day. Nothing has been priced or ordered yet.';
-    head.innerHTML = '<div>' + (isReq ? '<div class="q-kind">Quote request · not a quote yet</div>' : (q.req ? '<div class="q-kind">Quote · from request ' + esc(q.req) + '</div>' : '')) + '<h1>' + q.no + ' <span class="status ' + st[1] + ' h-status">' + st[0] + '</span></h1><p class="finding">' + units + ' truck' + (units > 1 ? 's' : '') + ' on ' + q.lines.length + ' line' + (q.lines.length > 1 ? 's' : '') + '. ' + esc(finding) + (q.note && q.stage !== 'accepted' ? ' ' + esc(q.note) : '') + '</p></div>' +
+    head.innerHTML = '<div>' + (isReq ? '<div class="q-kind">Quote request · not a quote yet</div>' : (q.req ? '<div class="q-kind">Quote · from request ' + esc(q.req) + '</div>' : '')) + '<h1>' + q.no + ' <span class="status ' + st[1] + ' h-status">' + st[0] + '</span></h1><p class="finding">' + units + ' truck' + (units > 1 ? 's' : '') + ', ' + q.lines.length + ' configuration' + (q.lines.length > 1 ? 's' : '') + '. ' + esc(finding) + (q.note && q.stage !== 'accepted' ? ' ' + esc(q.note) : '') + '</p></div>' +
       '<div class="side">' + acts + '<span class="q-second">' + second + '</span></div>';
-    $('q-stats').innerHTML = [[total ? money(total) : '—', '', 'Quote total', 'Before tax, FET and title'], [units + '', '', 'Trucks', q.lines.length + ' configuration' + (q.lines.length > 1 ? 's' : '')], [q.stage === 'accepted' ? q.updated : (q.validUntil || q.updated), '', q.stage === 'accepted' ? 'Signed' : q.validUntil ? 'Valid until' : 'Updated', 'Owner ' + q.owner], [(q.terms || defaultTerms()).financing.split(' · ')[0], '', 'Financing', (q.terms || defaultTerms()).lienholder || 'No lienholder']].map(function (s) { return '<div class="stat-c"><div class="v' + (s[0].length > 12 ? ' v-sm' : '') + '">' + esc(s[0]) + '</div><div class="l">' + esc(s[2]) + '</div><div class="d">' + esc(s[3]) + '</div></div>'; }).join('');
-    $('q-lines').innerHTML = q.lines.map(function (l) {
-      var ts = lineTrucks(q, l), pk = linePackage(l);
-      var trackers = ts.length ? ts.map(function (t) { var s1 = lineStage(q, l, t); return '<div class="ql-truck"><div><strong><button type="button" class="row-btn" data-truck="' + t.no + '" aria-haspopup="dialog">' + t.no + '</button></strong><span>' + esc(t.where) + ' · expected ' + esc(t.eta) + '</span></div><div class="ql-track">' + trackerHtml(s1) + '</div></div>'; }).join('') : '<div class="ql-truck"><div><strong>' + (l.qty > 1 ? l.qty + ' trucks' : '1 truck') + '</strong><span>' + (l.eta ? 'Expected ' + esc(l.eta) : 'Lead time on the quote') + '</span></div><div class="ql-track">' + trackerHtml(lineStage(q, l, null)) + '</div></div>';
-      return '<section class="panel"><div class="section-head"><h3>' + esc(l.ql) + ' · ' + esc(l.spec) + '</h3><span class="head-note">' + (l.unitPrice ? money(l.unitPrice) + (l.qty > 1 ? ' each × ' + l.qty : '') : 'Pricing pending') + '</span></div><p class="side-copy q-detail">' + esc(l.detail) + '</p><div class="q-trucks">' + trackers + '</div>' + (l.items && l.items.length ? '<h4 class="dr-sub q-items-h">Product and configured options</h4>' + lineItemsHtml(l) : '') + '</section>';
-    }).join('');
+    $('q-stats').innerHTML = [[total ? money(total) : 'Pending', '', total ? 'Quote total' : 'Pricing', total ? 'Before tax, FET and title' : 'Sarah is pricing it'], [units + '', '', 'Trucks', (function () { var all = []; q.lines.forEach(function (l) { all = all.concat(lineTrucks(q, l)); }); var dl = all.filter(function (t) { return t.stage === 4; }).length; return all.length ? dl + ' delivered · ' + (all.length - dl) + ' building' : q.lines.length + ' configuration' + (q.lines.length > 1 ? 's' : ''); })()], [q.stage === 'accepted' ? q.updated : (q.validUntil || q.updated), '', q.stage === 'accepted' ? 'Signed' : q.validUntil ? 'Valid until' : 'Updated', 'Owner ' + q.owner], [(q.terms || defaultTerms()).financing.split(' · ')[0], '', 'Financing', (q.terms || defaultTerms()).lienholder || 'No lienholder']].map(function (s) { return '<div class="stat-c"><div class="v' + (s[0].length > 12 ? ' v-sm' : '') + '">' + esc(s[0]) + '</div><div class="l">' + esc(s[2]) + '</div><div class="d">' + esc(s[3]) + '</div></div>'; }).join('');
+    $('q-lines').innerHTML = q.lines.map(function (l) { return quoteLineHtml(q, l, isReq); }).join('');
+    wireQuoteLines(q, isReq, function (box) { qsa('[data-truck]', box).forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.qc-r')); }); }); });
     $('q-terms').innerHTML = termsHtml(q);
     $('q-progress').innerHTML = '<ol class="stages v">' + stagesHtml(quoteStagesList(q), Q_ORDER[q.stage]) + '</ol>';
-    $('q-sf').innerHTML = '<dl class="dr-facts"><dt>' + (isReq ? 'Opportunity' : 'Quote') + '</dt><dd class="mono">' + q.sfId + '</dd>' + (q.req && !isReq ? '<dt>Request</dt><dd>' + esc(q.req) + '</dd>' : '') + '<dt>Lines</dt><dd>' + q.lines.map(function (l) { return l.ql; }).join(', ') + '</dd><dt>Synced</dt><dd>' + esc(S.salesforce.lastSync) + '</dd></dl><p class="form-note">' + (isReq ? 'A request creates an opportunity in Salesforce with the lines you asked for. The quote record is created by Sarah when she prices it.' : 'This quote and its lines are Salesforce records; the portal reads them and writes your decisions back.') + '</p>';
+    $('q-sf').innerHTML = '<dl class="dr-facts"><dt>' + (isReq ? 'Opportunity' : 'Quote') + '</dt><dd class="mono">' + q.sfId + '</dd>' + (q.req && !isReq ? '<dt>Request</dt><dd>' + esc(q.req) + '</dd>' : '') + (isReq ? '' : '<dt>Lines</dt><dd>' + q.lines.map(function (l) { return l.ql; }).join(', ') + '</dd>') + '<dt>Synced</dt><dd>' + esc(S.salesforce.lastSync) + '</dd></dl><p class="form-note">' + (isReq ? 'A request creates an opportunity in Salesforce with the lines you asked for. The quote record is created by Sarah when she prices it.' : 'This quote and its lines are Salesforce records; the portal reads them and writes your decisions back.') + '</p>';
     var tb = $('q-terms-btn'); if (tb) { tb.hidden = emp; once(tb, 'click', function () { flowQuoteTerms(q, function () { closeDrawer(); renderPage(); }); }); }
     qsa('[data-truck]').forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.panel')); }); });
     var placeOrders = function () {
