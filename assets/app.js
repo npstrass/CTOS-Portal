@@ -294,12 +294,12 @@
     var chips = groups.length > 1 || ts.length > QC_SHOW ? '<div class="qc-chips" role="group" aria-label="Filter by stage"><button type="button" class="qc-chip' + (ui.filter == null ? ' on' : '') + '" data-qc-filter="">All <b>' + ts.length + '</b></button>' + groups.map(function (g) { return '<button type="button" class="qc-chip' + (ui.filter === g.i ? ' on' : '') + '" data-qc-filter="' + g.i + '">' + esc(g.name) + ' <b>' + g.n + '</b></button>'; }).join('') + '</div>' : '';
     var shown = ui.filter == null ? rows : rows.filter(function (r) { return r.st.i === ui.filter; });
     var cut = !ui.all && shown.length > QC_SHOW, vis = cut ? shown.slice(0, QC_SHOW) : shown;
-    return chips + '<div class="qc-rows' + (signed ? ' sel' : '') + '">' + vis.map(function (r) {
+    return chips + '<div class="qc-rows">' + vis.map(function (r) {
       var t = r.t, done = r.st.i === last;
       return '<div class="qc-r' + (done ? ' done' : '') + '">' +
-        (signed ? '<span class="qc-ck">' + (t.invoice ? '<svg class="qc-tick" viewBox="0 0 24 24" aria-label="Invoiced"><path d="m5 12 4 4L19 7"/></svg>' : '<input type="checkbox" data-ql-pick="' + t.no + '" aria-label="Select ' + esc(t.ql) + ' for invoicing">') + '</span>' : '') +
+
         '<button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + esc(t.ql) + '</button>' +
-        '<span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span>' +
+        '<span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + (t.ids && t.ids.vin ? ' · VIN ' + esc(t.ids.vin) : '') + '</span>' +
         '<span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b></span>' +
         '<span class="qc-invc">' + (t.invoice ? '<a href="billing.html" class="qc-inv">' + esc(t.invoice) + '</a>' : '') + '</span>' +
       '</div>'; }).join('') + '</div>' +
@@ -334,28 +334,22 @@
   function quoteInvoiceHtml(q, isReq) {
     var signed = q.stage === 'accepted';
     return q.lines.map(function (l) { return productHtml(q, l, isReq, signed); }).join('') +
-      (signed ? '<div class="pg-bar" id="pg-bar" hidden><span id="pg-bar-txt"></span><button type="button" class="lnk" id="pg-bar-clear">Clear</button><button type="button" class="btn btn-primary" id="pg-bar-go">Request invoices</button></div>' : '');
+      '';
   }
   function wireQuoteLines(q, isReq, wireTrucks) {
-    var picked = {};
-    var linesBox = $('q-lines'); if (linesBox && !linesBox.w_bar) { linesBox.w_bar = true; linesBox.addEventListener('change', function (e) { if (e.target && e.target.matches && e.target.matches('[data-ql-pick]')) bar(); }); linesBox.addEventListener('click', function (e) { if (e.target && e.target.matches && e.target.matches('[data-ql-pick]')) setTimeout(bar, 0); }); }
-    function bar() { var b = $('pg-bar'); if (!b) return; var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); picked = {}; ids.forEach(function (id) { picked[id] = true; }); if (!ids.length) { b.hidden = true; return; } var ts = ids.map(function (id) { return S.trucks.filter(function (t) { return t.no === id; })[0]; }).filter(Boolean); b.hidden = !ts.length; if (ts.length) $('pg-bar-txt').innerHTML = '<b>' + ts.length + ' quote line' + (ts.length > 1 ? 's' : '') + '</b> selected · ' + money(sum(ts.map(function (t) { return t.price; }))) + ' before tax and title'; }
     qsa('.pg').forEach(function (card) {
       var l = q.lines.filter(function (x) { return x.ql === card.getAttribute('data-ql'); })[0]; if (!l) return;
       var ui = { filter: null, all: false }, box = card.querySelector('[data-qc-status]');
-      function paint() { box.innerHTML = qlRowsHtml(q, l, isReq, ui, q.stage === 'accepted'); wire(); bar(); }
+      function paint() { box.innerHTML = qlRowsHtml(q, l, isReq, ui, q.stage === 'accepted'); wire(); }
       function wire() {
         qsa('[data-qc-filter]', box).forEach(function (b) { b.addEventListener('click', function () { var v = b.getAttribute('data-qc-filter'); ui.filter = v === '' ? null : +v; ui.all = false; paint(); }); });
         var all = box.querySelector('[data-qc-all]'); if (all) all.addEventListener('click', function () { ui.all = true; paint(); });
         var less = box.querySelector('[data-qc-less]'); if (less) less.addEventListener('click', function () { ui.all = false; paint(); });
-        qsa('[data-ql-pick]', box).forEach(function (c) { c.checked = !!picked[c.getAttribute('data-ql-pick')]; c.addEventListener('change', function () { picked[c.getAttribute('data-ql-pick')] = c.checked; bar(); }); });
         qsa('[data-qc-invoice]', box).forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-qc-invoice'); })[0]; confirmInline(b.closest('.qc-r'), 'Request the invoice for ' + t.ql + ', ' + money(t.price) + ' before tax and title?', 'Request invoice', function () { requestInvoice(q, [t]); }); }); });
         wireTrucks(box);
       }
       wire();
     });
-    var go = $('pg-bar-go'); if (go) go.addEventListener('click', function () { var ids = qsa('[data-ql-pick]:checked').map(function (c) { return c.getAttribute('data-ql-pick'); }); if (ids.length) flowInvoiceQls(q, ids); });
-    var cl = $('pg-bar-clear'); if (cl) cl.addEventListener('click', function () { qsa('[data-ql-pick]').forEach(function (c) { c.checked = false; }); bar(); });
   }
   function termsHtml(q) {
     var t = q.terms || defaultTerms();
@@ -1156,11 +1150,26 @@
   }
 
   function flowTruck(t, row) {
+    var q = S.quotes.filter(function (x) { return x.no === t.quote; })[0], l = q ? q.lines.filter(function (x) { return lineQls(x).indexOf(t.ql) >= 0; })[0] : null;
+    var ids = t.ids || {}, done = t.stage === 4, inv = t.invoice ? S.invoices.filter(function (x) { return x.no === t.invoice; })[0] : null;
+    var cfg = l ? lineConfig(l).filter(function (r) { return r[0] !== 'Condition' && r[0] !== 'Stock #'; }) : [];
+    var opts = l && l.items ? l.items.slice(1) : [], base = l && l.items ? l.items[0] : null;
+    function dl(rows) { return '<dl class="dr-facts">' + rows.filter(function (r) { return r[1]; }).map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd>'; }).join('') + '</dl>'; }
+    var pending = '<span class="muted">Assigned when the chassis is built</span>', pending2 = '<span class="muted">Assigned at upfit</span>';
+    var body =
+      '<h4 class="dr-sub">Status</h4>' + dl([['Stage', esc(t.stages[t.stage][0]) + (t.stages[t.stage][1] ? ' · ' + esc(t.stages[t.stage][1]) : '')], ['Where', esc(t.where)], [done ? 'Delivered' : 'Expected', esc(t.eta)], ['Ordered', esc(t.ordered) + (q ? ' · buyer’s order on ' + esc(q.no) : '')]]) +
+      '<ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>' +
+      '<h4 class="dr-sub">Identifiers</h4>' + dl([['VIN', ids.vin ? '<span class="mono">' + esc(ids.vin) + '</span>' : pending], ['Engine S/N', ids.engine ? '<span class="mono">' + esc(ids.engine) + '</span>' : pending], [ids.derrick ? 'Derrick S/N' : 'Aerial S/N', ids.aerial || ids.derrick ? esc(ids.aerial || ids.derrick) : pending2], ['Body S/N', ids.body ? esc(ids.body) : pending2], ['Fleet unit', ids.unit ? esc(ids.unit) : (done ? '<span class="muted">Not assigned</span>' : '<span class="muted">Assigned at delivery</span>')], ['Title', ids.mso ? esc(ids.mso) : ''], ['Quote line', '<span class="mono">' + esc(t.ql) + '</span> · ' + esc(t.quote) + ' <span class="muted mono">' + esc(t.no) + '</span>']]) +
+      '<h4 class="dr-sub">Configuration</h4>' + (cfg.length ? dl(cfg.map(function (r) { return [r[0], esc(r[1])]; })) : '<p class="form-note">' + esc(t.detail) + '</p>') +
+      (base ? '<p class="qc-item">Item ' + esc(base[0]) + (base[1] ? ' · ' + esc(base[1]) : '') + ' · ' + esc(base[2]) + '</p>' : '') +
+      '<h4 class="dr-sub">Options' + (opts.length ? ' <span class="muted">' + opts.length + '</span>' : '') + '</h4>' + (opts.length ? '<ul class="qc-opts">' + opts.map(function (o) { return '<li><span>' + esc(optName(o[2])) + '<small class="mono">' + esc(o[0]) + '</small></span><b>' + (o[4] ? money(lineNet(o)) : '') + '</b></li>'; }).join('') + '</ul>' : '<p class="form-note">No options on this unit.</p>') +
+      '<h4 class="dr-sub">Price and invoice</h4>' + dl([['Price', money(t.price) + ' <span class="muted">before tax, FET and title</span>'], ['Invoice', inv ? '<a href="billing.html" class="lnk">' + esc(inv.no) + '</a> · ' + (inv.status === 'paid' ? 'paid ' + esc(inv.paidOn || '') : 'open · due ' + esc(inv.due || '')) : '<span class="muted">Not yet invoiced · request below</span>']]) +
+      '<h4 class="dr-sub">Documents</h4><div class="dr-docs"><a href="#" class="lnk">Build sheet</a><a href="#" class="lnk">Spec sheet</a>' + (ids.vin ? '<a href="#" class="lnk">Chassis MSO</a>' : '') + (done ? '<a href="#" class="lnk">Delivery receipt</a><a href="#" class="lnk">Warranty registration</a>' : '') + '</div>';
     openDrawer({
-      kind: t.stages[t.stage][0], title: truckLabel(t), meta: t.spec + ' · ' + t.detail,
-      body: '<dl class="dr-facts"><dt>Order</dt><dd>' + esc(truckLabel(t)) + ' · placed ' + t.ordered + ' <span class="muted mono">' + t.no + '</span></dd>' + (t.quote ? '<dt>Salesforce</dt><dd>' + t.quote + ' · ' + t.ql + '</dd>' : '') + (t.invoice ? '<dt>Invoice</dt><dd><a href="billing.html" class="lnk">' + esc(t.invoice) + '</a></dd>' : '') + '<dt>Expected</dt><dd>' + esc(t.eta) + '</dd><dt>Built at</dt><dd>' + esc(t.where) + '</dd><dt>Price</dt><dd>' + money(t.price) + '</dd></dl><ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>',
-      foot: (t.invoice ? '<a href="billing.html" class="btn btn-ghost">Invoice ' + esc(t.invoice) + '</a>' : '<button type="button" class="btn btn-primary" id="t-invoice">Request invoice</button>') + '<a href="#" class="lnk">Build sheet</a><button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
-      after: function () { var ti = $('t-invoice'); if (ti) ti.addEventListener('click', function () { var q = S.quotes.filter(function (x) { return x.no === t.quote; })[0]; if (q) requestInvoice(q, [t]); }); $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · order ' + t.no, lastPrice: t.price }); }); }
+      kind: 'Quote line · ' + esc(t.quote), title: t.ql, meta: t.spec + (ids.vin ? ' · VIN ' + ids.vin : ''),
+      body: body,
+      foot: (t.invoice ? '<a href="billing.html" class="btn btn-ghost">Invoice ' + esc(t.invoice) + '</a>' : '<button type="button" class="btn btn-primary" id="t-invoice">Request invoice</button>') + '<button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
+      after: function () { var ti = $('t-invoice'); if (ti) ti.addEventListener('click', function () { if (q) requestInvoice(q, [t]); }); $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · ' + t.ql, lastPrice: t.price }); }); }
     });
   }
 

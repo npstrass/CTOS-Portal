@@ -2302,3 +2302,8 @@ body[data-page="quote"] .stats { display: block; border: 0; padding: 0; margin: 
 }
 
 .pg-bar[hidden] { display: none !important; }
+
+.dr-docs { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem; }
+.drawer .dr-sub { margin-top: 18px; }
+.drawer .dr-sub:first-child { margin-top: 0; }
+.drawer .qc-opts li { font-size: 0.86rem; }
