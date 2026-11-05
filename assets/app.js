@@ -306,7 +306,7 @@
       (cut ? '<button type="button" class="lnk qc-more" data-qc-all>Show all ' + shown.length + '</button>' : (ui.all && shown.length > QC_SHOW ? '<button type="button" class="lnk qc-more" data-qc-less>Show fewer</button>' : ''));
   }
   function productHtml(q, l, isReq, signed) {
-    var it = lineStock(l), kind = it ? it.kind : lineKind(l), pics = it ? invPhotos(it) : [], photo = pics[0] || kindPhoto(kind) || '', fb = 'assets/img/placeholder-' + (/^(bucket|digger|crane)$/.test(kind) ? kind : 'service') + '.svg';
+    var it = lineStock(l), kind = it ? it.kind : lineKind(l), pics = it ? invPhotos(it) : [], photo = pics[0] || kindPhoto(kind) || '', fb = placeholderPhoto(kind);
     var items = l.items || [], base = items[0], opts = items.slice(1), priced = !isReq && !!l.unitPrice, unit = it && it.kind === 'trailer' ? 'trailer' : 'truck';
     var baseNet = base && base[4] ? lineNet(base) : 0, optTotal = opts.reduce(function (n, o) { return n + (o[4] ? lineNet(o) : 0); }, 0);
     var cond = it ? (it.cond === 'new' ? 'New' : 'Used') : (/\bused\b/i.test(l.spec + ' ' + l.detail) ? 'Used' : /\bnew\b/i.test(l.spec + ' ' + l.detail) ? 'New' : '');
@@ -430,7 +430,9 @@
   function nextQuoteNo() { var mx = 10422; S.quotes.forEach(function (q) { var m = /^Q-(\d+)$/.exec(q.no || ''); if (m) mx = Math.max(mx, +m[1]); }); return 'Q-' + (mx + 1); }
   // Trucks are identified to the customer by their quote line: QL-0137602-01, -02 ... (the T- number stays internal)
   function truckLabel(t) { return t ? t.ql : ''; }
-  function kindPhoto(kind) { var it = S.inventory.filter(function (x) { return x.kind === kind && invPhotos(x).length; })[0]; return it ? invPhotos(it)[0] : ''; }
+  var GENERIC_PHOTO = 'https://images.unsplash.com/photo-1719212328828-5ad8dd12be00?w=900&q=70&auto=format&fit=crop';
+  function kindPhoto(kind) { var it = S.inventory.filter(function (x) { return x.kind === kind && invPhotos(x).length; })[0]; return it ? invPhotos(it)[0] : GENERIC_PHOTO; }
+  function placeholderPhoto(kind) { return kindPhoto(kind === 'forestry' ? 'bucket' : kind || 'service'); }
   function lineTrucks(q, l) { var qls = lineQls(l); return S.trucks.filter(function (t) { return t.quote === q.no && qls.indexOf(t.ql) >= 0; }); }
   function lineStage(q, l, t) {
     if (q.stage === 'declined') return { i: -1, name: 'Declined', when: q.updated };
@@ -1732,7 +1734,7 @@
   /* ---------- unit photo: seeded, or uploaded by the customer or CTOS ---------- */
   function unitPhotoHtml(v) {
     var k = /bucket/i.test(v.kind) ? 'bucket' : /digger|derrick/i.test(v.kind) ? 'digger' : /crane/i.test(v.kind) ? 'crane' : 'service';
-    return '<figure class="unit-photo' + (v.photo ? '' : ' none') + '"><img src="' + (v.photo ? esc(v.photo) : 'assets/img/placeholder-' + k + '.svg') + '" alt="' + (v.photo ? 'Unit #' + v.unit : '') + '" onerror="this.onerror=null;this.src=\'assets/img/placeholder-' + k + '.svg\';this.parentNode.classList.add(\'none\')">' +
+    return '<figure class="unit-photo' + (v.photo ? '' : ' none') + '"><img src="' + (v.photo ? esc(v.photo) : placeholderPhoto(k)) + '" alt="' + (v.photo ? 'Unit #' + v.unit : '') + '" onerror="this.onerror=null;this.src=\'' + GENERIC_PHOTO + '\';this.parentNode.classList.add(\'none\')">' +
       '<figcaption><label class="btn btn-ghost sm up-btn"><input type="file" accept="image/*" id="u-photo-in" class="vh">' + (v.photo ? 'Change photo' : 'Add a photo') + '</label>' + (v.photo ? '<button type="button" class="lnk" id="u-photo-rm">Remove</button>' : '') + '</figcaption></figure>';
   }
   function wireUnitPhoto(v) {
@@ -1815,7 +1817,7 @@
   function invPhotos(it) { return (it.photos && it.photos.length ? it.photos : (it.photo ? [it.photo] : [])); }
   var GALLERY_LABELS = ['Front three-quarter', 'Rear three-quarter', 'Equipment', 'Cab and controls', 'Body and compartments', 'Data plate'];
   function galleryHtml(it) {
-    var pics = invPhotos(it), fb = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
+    var pics = invPhotos(it), fb = placeholderPhoto(it.kind);
     if (!pics.length) return '<figure class="inv-photo dr-photo"><img src="' + fb + '" alt="" class="ph"></figure>';
     return '<div class="gallery" data-n="' + pics.length + '"><figure class="inv-photo dr-photo g-main"><img src="' + esc(pics[0]) + '" alt="' + esc(invTitle(it)) + ', ' + GALLERY_LABELS[0] + '" onerror="this.onerror=null;this.src=\'' + fb + '\';this.classList.add(\'ph\')">' +
       (pics.length > 1 ? '<button type="button" class="g-nav prev" data-g="-1" aria-label="Previous photo"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="g-nav next" data-g="1" aria-label="Next photo"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button><span class="g-count"><b>1</b> / ' + pics.length + '</span>' : '') + '</figure>' +
@@ -1832,7 +1834,7 @@
   function inTrayTruck(stock) { return !!trayTruck(stock); }
   function inTrayRental(stock) { return tray().rentals.some(function (r) { return r.stock === stock; }); }
   function invCard(it, F) {
-    var sale = F.mode === 'sale', pics = invPhotos(it), photo = pics[0] || ('assets/img/' + it.stock + '.jpg'), fallback = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
+    var sale = F.mode === 'sale', pics = invPhotos(it), photo = pics[0] || ('assets/img/' + it.stock + '.jpg'), fallback = placeholderPhoto(it.kind);
     var av = availFor(it, F), inT = sale ? inTrayTruck(it.stock) : inTrayRental(it.stock);
     var meter = it.cond === 'new' ? 'New · ' + num(it.miles) + ' mi' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : 'Rental fleet · ' + num(it.hours) + ' h');
     var acts = sale ? '<button type="button" class="btn btn-ghost' + (inT ? ' on' : '') + '" data-pick-truck="' + it.stock + '" aria-pressed="' + inT + '">' + (inT ? 'On your request' : 'Add to quote request') + '</button><button type="button" class="lnk" data-inv-save="' + it.stock + '">Save build</button>'
@@ -1849,7 +1851,7 @@
   }
   var stockView = (function () { try { return localStorage.getItem('ctos-stock-view') || 'list'; } catch (e) { return 'list'; } })();
   function invRow(it, F) {
-    var sale = F.mode === 'sale', pics = invPhotos(it), photo = pics[0] || ('assets/img/' + it.stock + '.jpg'), fallback = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
+    var sale = F.mode === 'sale', pics = invPhotos(it), photo = pics[0] || ('assets/img/' + it.stock + '.jpg'), fallback = placeholderPhoto(it.kind);
     var av = availFor(it, F), inT = sale ? inTrayTruck(it.stock) : inTrayRental(it.stock), pct = sale ? S.pricing.truckPct : S.pricing.rentalPct;
     var meter = it.cond === 'new' ? 'New · ' + num(it.miles) + ' mi' : (it.cond === 'used' ? 'Used · ' + num(it.miles) + ' mi · ' + num(it.hours) + ' h' : num(it.hours) + ' h');
     var price = sale ? '<strong>' + money(yourPrice(it.price)) + '</strong>' + (pct ? '<s>' + money(it.price) + '</s>' : '') : '<strong>' + money(yourRate(it.rates.day)) + ' / day</strong><span>' + money(yourRate(it.rates.month)) + ' / mo</span>';
@@ -2044,7 +2046,7 @@
   renderers.stock = function () {
     var sid = (location.search.match(/[?&]s=([A-Za-z0-9-]+)/) || [])[1], it = S.inventory.filter(function (x) { return x.stock === sid; })[0], head = $('st-head');
     if (!it) { head.innerHTML = '<div><h1>Unit not found</h1><p class="finding">That stock number is not in CTOS inventory. <a href="shop.html#trucks">Back to the Shop</a>.</p></div>'; return; }
-    var mode = it.sale ? 'sale' : 'rent', F = stockF[mode], picked = mode === 'sale' ? inTrayTruck(it.stock) : inTrayRental(it.stock), pics = invPhotos(it), fb = 'assets/img/placeholder-' + (it.kind || 'service') + '.svg';
+    var mode = it.sale ? 'sale' : 'rent', F = stockF[mode], picked = mode === 'sale' ? inTrayTruck(it.stock) : inTrayRental(it.stock), pics = invPhotos(it), fb = placeholderPhoto(it.kind);
     document.title = it.stock + ' · ' + invTitle(it) + ' — CTOS One';
     $('st-crumb').textContent = it.sale ? 'Shop · Trucks' : 'Shop · Rentals'; $('st-crumb').href = it.sale ? 'shop.html#trucks' : 'shop.html#rentals';
     var av = availFor(it, F);

@@ -2307,3 +2307,6 @@ body[data-page="quote"] .stats { display: block; border: 0; padding: 0; margin: 
 .drawer .dr-sub { margin-top: 18px; }
 .drawer .dr-sub:first-child { margin-top: 0; }
 .drawer .qc-opts li { font-size: 0.86rem; }
+
+/* placeholders are photos now, never line art */
+.unit-photo.none img, .qc-photo.none img, .inv-photo.none img, .st-photo.none img { object-fit: cover; padding: 0; opacity: 1; }
