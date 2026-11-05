@@ -226,7 +226,12 @@
   function quoteTotal(q) { return sum(q.lines.map(function (l) { return l.qty * l.unitPrice; })); }
   function quoteUnits(q) { return sum(q.lines.map(function (l) { return l.qty; })); }
   var QL_SEQ = 140703;
-  function nextQl() { var used = S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0); return 'QL-0' + (QL_SEQ + used); }
+  function qlNum(ql) { return parseInt(String(ql).replace(/^QL-/, ''), 10); }
+  function qlStr(n) { var t = String(n); while (t.length < 7) t = '0' + t; return 'QL-' + t; }
+  // Every truck is its own quote line. A configuration line with qty 3 is three consecutive QLs.
+  function lineQls(l) { if (l.qls) return l.qls; var n = qlNum(l.ql), out = []; for (var i = 0; i < (l.qty || 1); i++) out.push(qlStr(n + i)); return out; }
+  function usedQls() { return S.quotes.reduce(function (n, q) { return n + q.lines.reduce(function (m, l) { return m + (l.qty || 1); }, 0); }, 0); }
+  function nextQl(offset) { return qlStr(QL_SEQ + usedQls() + (offset || 0)); }
   function defaultTerms() { var t = S.accountTax || {}; return { payer: S.user.org + ' · AP, ' + personaInfo().name, financing: S.credit.status === 'active' ? 'Cash · ' + S.credit.terms + ' on account' : 'Cash · card or wire', lienholder: '', deliverTo: S.shipTo && S.shipTo[0] ? S.shipTo[0] : 'To be confirmed', po: '', fet: t.fetStatus === 'Exempt' ? 'Exempt · certificate on file' : 'Taxable · no exemption on file', title: 'Virginia · ' + S.user.org }; }
   function lineNet(it) { return Math.round(it[4] * (1 - (it[5] || 0) / 100) - (it[6] || 0) + (it[7] || 0)); }
   function linePackage(l) { return (l.items || []).reduce(function (n, it) { return n + lineNet(it); }, 0); }
@@ -284,7 +289,7 @@
     var chips = groups.length > 1 || ts.length > QC_SHOW ? '<div class="qc-chips" role="group" aria-label="Filter trucks by stage"><button type="button" class="qc-chip' + (ui.filter == null ? ' on' : '') + '" data-qc-filter="">All <b>' + ts.length + '</b></button>' + groups.map(function (g) { return '<button type="button" class="qc-chip' + (ui.filter === g.i ? ' on' : '') + '" data-qc-filter="' + g.i + '">' + esc(g.name) + ' <b>' + g.n + '</b></button>'; }).join('') + '</div>' : '';
     var shown = ui.filter == null ? rows : rows.filter(function (r) { return r.st.i === ui.filter; });
     var cut = !ui.all && shown.length > QC_SHOW, vis = cut ? shown.slice(0, QC_SHOW) : shown;
-    return chips + '<div class="qc-rows">' + vis.map(function (r) { var t = r.t, done = r.st.i === last; return '<div class="qc-r' + (done ? ' done' : '') + '"><button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + esc(truckLabel(t)) + '</button><span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span><span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b></span></div>'; }).join('') + '</div>' +
+    return chips + '<div class="qc-rows">' + vis.map(function (r) { var t = r.t, done = r.st.i === last; return '<div class="qc-r' + (done ? ' done' : '') + '"><button type="button" class="row-btn qc-no" data-truck="' + t.no + '" aria-haspopup="dialog">' + esc(truckLabel(t)) + '</button><span class="qc-stage">' + trackerHtml(r.st, true) + '<span>' + esc(r.st.name) + '</span></span><span class="qc-where">' + esc(t.where) + '</span><span class="qc-eta">' + (done ? 'Delivered' : 'Expected') + ' <b>' + esc(t.eta) + '</b>' + (done ? (t.invoice ? '<a href="billing.html" class="qc-inv">' + esc(t.invoice) + '</a>' : '<button type="button" class="lnk qc-inv" data-qc-invoice="' + t.no + '">Request invoice</button>') : '') + '</span></div>'; }).join('') + '</div>' +
       (cut ? '<button type="button" class="lnk qc-more" data-qc-all>Show all ' + shown.length + '</button>' : (ui.all && shown.length > QC_SHOW ? '<button type="button" class="lnk qc-more" data-qc-less>Show fewer</button>' : ''));
   }
   function qcStatusSummary(q, l, isReq) {
@@ -307,7 +312,7 @@
     var baseRow = '<tr class="inv-sub"><td></td><td><span class="inv-k">Base ' + unit + '</span>' + (base ? '<span class="inv-d">' + esc(base[2]) + ' <span class="mono">' + esc(base[0]) + (base[1] ? ' · ' + esc(base[1]) : '') + '</span>' + (priced && base[5] ? '<br>List ' + money(base[4]) + ' less ' + base[5] + '% fleet discount' : '') + '</span>' : '') + '</td><td class="num">' + (l.qty) + '</td><td class="num">' + (priced && base ? money(baseNet) : pend) + '</td><td class="num">' + (priced && base ? money(baseNet * l.qty) : '') + '</td></tr>';
     var optRows = opts.map(function (o) { var net = o[4] ? lineNet(o) : 0; return '<tr class="inv-sub"><td></td><td><span class="inv-k">+ ' + esc(optName(o[2])) + '</span><span class="inv-d mono">' + esc(o[0]) + '</span></td><td class="num">' + l.qty + '</td><td class="num">' + (priced && net ? money(net) : pend) + '</td><td class="num">' + (priced && net ? money(net * l.qty) : '') + '</td></tr>'; }).join('');
     return '<tbody class="inv-line" data-ql="' + esc(l.ql) + '">' +
-      '<tr class="inv-main"><td class="inv-n">' + n + '</td><td class="inv-desc"><div class="inv-prod"><div class="qc-photo' + (photo ? '' : ' none') + '"><img src="' + esc(photo || fb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'' + fb + '\';this.parentNode.classList.add(\'none\')"></div><div><strong>' + esc(l.spec) + '</strong><span>' + esc([cond, kindName].filter(Boolean).join(' · ')) + '</span><span class="inv-brief">' + esc(brief) + '</span>' + (isReq ? '' : '<span class="inv-ref mono">' + esc(l.ql) + '</span>') + '</div></div></td><td class="num inv-qty">' + l.qty + '</td><td class="num">' + (priced ? money(l.unitPrice) : pend) + '</td><td class="num inv-amt">' + (priced ? money(l.unitPrice * l.qty) : '') + '</td></tr>' +
+      '<tr class="inv-main"><td class="inv-n">' + n + '</td><td class="inv-desc"><div class="inv-prod"><div class="qc-photo' + (photo ? '' : ' none') + '"><img src="' + esc(photo || fb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src=\'' + fb + '\';this.parentNode.classList.add(\'none\')"></div><div><strong>' + esc(l.spec) + '</strong><span>' + esc([cond, kindName].filter(Boolean).join(' · ')) + '</span><span class="inv-brief">' + esc(brief) + '</span>' + (isReq ? '' : '<span class="inv-ref mono">' + esc(lineQls(l).length > 1 ? lineQls(l)[0] + ' – ' + lineQls(l)[lineQls(l).length - 1] + ' · one quote line per truck' : l.ql) + '</span>') + '</div></div></td><td class="num inv-qty">' + l.qty + '</td><td class="num">' + (priced ? money(l.unitPrice) : pend) + '</td><td class="num inv-amt">' + (priced ? money(l.unitPrice * l.qty) : '') + '</td></tr>' +
       baseRow + optRows +
       '<tr class="inv-cfg" hidden><td></td><td colspan="4"><h4 class="dr-sub">Configuration</h4><dl class="qc-cfg">' + cfg + '</dl></td></tr>' +
       '<tr class="inv-status"><td></td><td colspan="4"><div class="inv-st"><span class="inv-k">' + (lineTrucks(q, l).length ? 'Build status' : 'Status') + '</span>' + qcStatusSummary(q, l, isReq) + '<button type="button" class="lnk inv-cfg-btn" data-qc-cfg>Full configuration</button></div><div class="qc-status" data-qc-status hidden>' + qcTruckRows(q, l, isReq, { filter: null, all: false }) + '</div></td></tr>' +
@@ -338,6 +343,7 @@
         qsa('[data-qc-filter]', box).forEach(function (b) { b.addEventListener('click', function () { var v = b.getAttribute('data-qc-filter'); ui.filter = v === '' ? null : +v; ui.all = false; paint(); }); });
         var all = box.querySelector('[data-qc-all]'); if (all) all.addEventListener('click', function () { ui.all = true; paint(); });
         var less = box.querySelector('[data-qc-less]'); if (less) less.addEventListener('click', function () { ui.all = false; paint(); });
+        qsa('[data-qc-invoice]', box).forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-qc-invoice'); })[0]; confirmInline(b.closest('.qc-r'), 'Request the invoice for ' + t.ql + ', ' + money(t.price) + ' before tax and title?', 'Request invoice', function () { requestInvoice(q, [t]); }); }); });
         wireTrucks(box);
       }
       wire();
@@ -360,12 +366,27 @@
       }
     });
   }
-  function requestInvoice(q) {
-    var total = quoteTotal(q), no = 'INV-' + (20470 + S.invoices.length);
-    S.invoices.unshift({ no: no, date: 'Today', due: 'Nov 30', unit: '', desc: q.no + ' · ' + quoteUnits(q) + ' truck' + (quoteUnits(q) > 1 ? 's' : ''), amount: total, status: 'open', quote: q.no });
-    q.invoice = no; q.updated = 'Today'; save();
-    addNotification({ title: 'Invoice ' + no + ' issued for ' + q.no, text: money(total) + ' before tax and title. Pay from Billing, or finance it.', href: 'billing.html' });
-    closeDrawer(); toast('Invoice ' + no + ' requested. It is on Billing.'); renderPage();
+  function requestInvoice(q, trucks) {
+    var made = [];
+    trucks.forEach(function (t) {
+      var no = 'INV-' + (20470 + S.invoices.length);
+      S.invoices.unshift({ no: no, date: 'Today', due: 'Nov 30', unit: '', desc: t.ql + ' · ' + t.spec, amount: t.price, status: 'open', quote: q.no, ql: t.ql });
+      t.invoice = no; made.push(no);
+    });
+    q.updated = 'Today'; save();
+    addNotification({ title: (made.length > 1 ? made.length + ' invoices issued' : 'Invoice ' + made[0] + ' issued') + ' on ' + q.no, text: money(sum(trucks.map(function (t) { return t.price; }))) + ' before tax and title, one invoice per truck. Pay from Billing, or finance it.', href: 'billing.html' });
+    closeDrawer(); toast(made.length > 1 ? made.length + ' invoices requested. They are on Billing.' : 'Invoice ' + made[0] + ' requested. It is on Billing.'); renderPage();
+  }
+  function flowInvoiceQls(q) {
+    var all = []; q.lines.forEach(function (l) { all = all.concat(lineTrucks(q, l)); });
+    var open = all.filter(function (t) { return t.stage === 4 && !t.invoice; }), done = all.filter(function (t) { return t.invoice; });
+    openDrawer({
+      kind: 'Request invoices · ' + q.no, title: open.length ? open.length + ' delivered truck' + (open.length > 1 ? 's' : '') + ' not yet invoiced' : 'Nothing to invoice yet', meta: 'CTOS invoices each truck on its own quote line once it is delivered.',
+      body: '<form class="form" id="iq-form">' + (open.length ? '<div class="list li-list">' + open.map(function (t) { return '<label class="row fig li"><input type="checkbox" name="iq" value="' + t.no + '" checked> <span><strong>' + esc(t.ql) + '</strong><small>' + esc(t.spec) + ' · delivered ' + esc(t.eta) + '</small></span><b>' + money(t.price) + '</b></label>'; }).join('') + '</div>' : '<p class="form-note">Invoices are requested per truck after delivery. ' + (all.length - done.length) + ' truck' + (all.length - done.length === 1 ? ' is' : 's are') + ' still building.</p>') +
+        (done.length ? '<h4 class="dr-sub">Already invoiced</h4><div class="list li-list">' + done.map(function (t) { var inv = S.invoices.filter(function (x) { return x.no === t.invoice; })[0] || {}; return '<div class="row fig li"><span><strong>' + esc(t.ql) + '</strong><small>' + esc(t.invoice) + (inv.status === 'paid' ? ' · paid ' + esc(inv.paidOn || '') : inv.due ? ' · due ' + esc(inv.due) : '') + '</small></span><b>' + money(t.price) + '</b></div>'; }).join('') + '</div>' : '') + '</form>',
+      foot: (open.length ? '<button type="submit" form="iq-form" class="btn btn-primary">Request invoice' + (open.length > 1 ? 's' : '') + '</button>' : '') + '<a href="billing.html" class="lnk">Go to Billing</a>',
+      after: function () { var f = $('iq-form'); if (f) f.addEventListener('submit', function (e) { e.preventDefault(); var picked = qsa('input[name="iq"]:checked', f).map(function (c) { return S.trucks.filter(function (t) { return t.no === c.value; })[0]; }); if (picked.length) requestInvoice(q, picked); }); }
+    });
   }
   function flowRequestQuote(stock) {
     var stocks = Array.isArray(stock) ? stock : (stock ? [stock] : []);
@@ -379,7 +400,7 @@
         $('rq-add').addEventListener('click', function () { n += 1; var w = document.createElement('div'); w.innerHTML = lineHtml(n); $('rq-lines').appendChild(w.children ? w.children[0] : w); });
         $('rq-form').addEventListener('submit', function (e) {
           e.preventDefault();
-          var lines = qsa('.qline').map(function (f, i) { return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, '') + (f.getAttribute('data-stock') ? ' · stock ' + f.getAttribute('data-stock') : ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
+          var off = 0; var lines = qsa('.qline').map(function (f, i) { var qty = +f.querySelector('.rq-qty').value || 1, ql = nextQl(off); off += qty; return { ql: ql, spec: f.querySelector('.rq-subject').value, detail: (f.querySelector('.rq-cond').value + ' · ' + f.querySelector('.rq-detail').value).replace(/ · $/, '') + (f.getAttribute('data-stock') ? ' · stock ' + f.getAttribute('data-stock') : ''), qty: +f.querySelector('.rq-qty').value || 1, unitPrice: 0, eta: '' }; }).filter(function (l) { return l.spec; });
           if (!lines.length) return;
           var no = nextReq(), sf = '006Hs00000' + Math.random().toString(36).slice(2, 7).toUpperCase();
           S.quotes.unshift({ no: no, req: no, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: lines, note: ($('rq-by').value ? 'Needed by ' + $('rq-by').value + '. ' : '') + ($('rq-trade').value ? 'Trade-in: ' + $('rq-trade').value + '.' : '') });
@@ -397,9 +418,9 @@
   function nextReq() { var mx = 2041; S.quotes.forEach(function (q) { var m = /^RQ-(\d+)$/.exec(q.req || ''); if (m) mx = Math.max(mx, +m[1]); }); return 'RQ-' + (mx + 1); }
   function nextQuoteNo() { var mx = 10422; S.quotes.forEach(function (q) { var m = /^Q-(\d+)$/.exec(q.no || ''); if (m) mx = Math.max(mx, +m[1]); }); return 'Q-' + (mx + 1); }
   // Trucks are identified to the customer by their quote line: QL-0137602-01, -02 ... (the T- number stays internal)
-  function truckLabel(t) { if (!t) return ''; var sib = S.trucks.filter(function (x) { return x.ql === t.ql; }).map(function (x) { return x.no; }).sort(); var i = sib.indexOf(t.no) + 1; return t.ql + '-' + (i < 10 ? '0' + i : i); }
+  function truckLabel(t) { return t ? t.ql : ''; }
   function kindPhoto(kind) { var it = S.inventory.filter(function (x) { return x.kind === kind && invPhotos(x).length; })[0]; return it ? invPhotos(it)[0] : ''; }
-  function lineTrucks(q, l) { return S.trucks.filter(function (t) { return t.quote === q.no && t.ql === l.ql; }); }
+  function lineTrucks(q, l) { var qls = lineQls(l); return S.trucks.filter(function (t) { return t.quote === q.no && qls.indexOf(t.ql) >= 0; }); }
   function lineStage(q, l, t) {
     if (q.stage === 'declined') return { i: -1, name: 'Declined', when: q.updated };
     if (t) return { i: 3 + t.stage, name: t.stage === 0 ? 'Ordered' : t.stage === 4 ? 'Delivered' : t.stages[t.stage][0], when: t.stages[t.stage][1] || '', eta: t.eta, where: t.where };
@@ -445,7 +466,7 @@
       if (q.stage === 'ready') acts = '<button type="button" class="btn btn-primary" id="q-rbo">Request the buyer\u2019s order<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button type="button" class="lnk" id="q-changes">Ask for changes</button><button type="button" class="lnk" id="q-decline">Decline</button>';
       else if (q.stage === 'rbo') acts = '<span class="wo-note">Sarah is preparing the buyer\u2019s order in Salesforce. It arrives by email for e-signature, usually the same day.</span>';
       else if (q.stage === 'rboSent') acts = '<a href="#" class="btn btn-primary" id="q-sign">Open the buyer\u2019s order to sign<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a><span class="wo-note">Sent ' + esc(q.updated) + ' to ' + esc((q.terms || defaultTerms()).payer.split(' · ')[0]) + ' · DocuSign</span>';
-      if (Q_ORDER[q.stage] >= 2 && q.stage !== 'declined') second = (q.stage === 'accepted' ? (q.invoice ? '<a href="billing.html" class="lnk">Invoice ' + esc(q.invoice) + '</a>' : '<button type="button" class="lnk" id="q-invoice">Request an invoice</button>') : '') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>' + (q.rboDoc ? '<a href="#" class="lnk">Buyer\u2019s order PDF</a>' : '');
+      if (Q_ORDER[q.stage] >= 2 && q.stage !== 'declined') second = (q.stage === 'accepted' ? '<button type="button" class="lnk" id="q-invoice">Invoices</button>' : '') + '<button type="button" class="lnk" id="q-finance">Apply for financing</button>' + (q.rboDoc ? '<a href="#" class="lnk">Buyer\u2019s order PDF</a>' : '');
     } else {
       if (q.stage === 'review') acts = '<button type="button" class="btn btn-primary" id="q-send">Send quote to customer</button>';
       else if (q.stage === 'requested') acts = '<button type="button" class="btn btn-primary" id="q-review">Start review</button>';
@@ -461,13 +482,13 @@
     wireQuoteLines(q, isReq, function (box) { qsa('[data-truck]', box).forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.qc-r')); }); }); });
     $('q-terms').innerHTML = termsHtml(q);
     $('q-progress').innerHTML = '<ol class="stages v">' + stagesHtml(quoteStagesList(q), Q_ORDER[q.stage]) + '</ol>';
-    $('q-sf').innerHTML = '<dl class="dr-facts"><dt>' + (isReq ? 'Opportunity' : 'Quote') + '</dt><dd class="mono">' + q.sfId + '</dd>' + (q.req && !isReq ? '<dt>Request</dt><dd>' + esc(q.req) + '</dd>' : '') + (isReq ? '' : '<dt>Lines</dt><dd>' + q.lines.map(function (l) { return l.ql; }).join(', ') + '</dd>') + '<dt>Synced</dt><dd>' + esc(S.salesforce.lastSync) + '</dd></dl><p class="form-note">' + (isReq ? 'A request creates an opportunity in Salesforce with the lines you asked for. The quote record is created by Sarah when she prices it.' : 'This quote and its lines are Salesforce records; the portal reads them and writes your decisions back.') + '</p>';
+    $('q-sf').innerHTML = '<dl class="dr-facts"><dt>' + (isReq ? 'Opportunity' : 'Quote') + '</dt><dd class="mono">' + q.sfId + '</dd>' + (q.req && !isReq ? '<dt>Request</dt><dd>' + esc(q.req) + '</dd>' : '') + (isReq ? '' : '<dt>Lines</dt><dd>' + (function () { var all = []; q.lines.forEach(function (l) { all = all.concat(lineQls(l)); }); return all.length > 4 ? all[0] + ' – ' + all[all.length - 1] + ' (' + all.length + ')' : all.join(', '); })() + '</dd>') + '<dt>Synced</dt><dd>' + esc(S.salesforce.lastSync) + '</dd></dl><p class="form-note">' + (isReq ? 'A request creates an opportunity in Salesforce with the lines you asked for. The quote record is created by Sarah when she prices it.' : 'This quote and its lines are Salesforce records; the portal reads them and writes your decisions back.') + '</p>';
     var tb = $('q-terms-btn'); if (tb) { tb.hidden = emp; once(tb, 'click', function () { flowQuoteTerms(q, function () { closeDrawer(); renderPage(); }); }); }
     qsa('[data-truck]').forEach(function (b) { b.addEventListener('click', function () { var t = S.trucks.filter(function (x) { return x.no === b.getAttribute('data-truck'); })[0]; flowTruck(t, b.closest('.panel')); }); });
     var placeOrders = function () {
       q.stage = 'accepted'; q.updated = 'Today';
       var made = [];
-      q.lines.forEach(function (l) { var mine = []; for (var i = 0; i < l.qty; i++) { var no = 'T-' + (2066 + S.trucks.length + 1); S.trucks.push({ no: no, quote: q.no, ql: l.ql, spec: l.spec, detail: l.detail, price: l.unitPrice, ordered: 'Today', eta: l.eta || 'TBD', where: 'Awaiting build slot', stage: 0, stages: [['Ordered', 'Today'], ['In production', ''], ['Built, in transit', ''], ['Prep at CTOS', ''], ['Delivery', l.eta || '']] }); made.push(no); mine.push(no); } l.orderNo = mine.join(', '); });
+      q.lines.forEach(function (l) { var mine = []; for (var i = 0; i < l.qty; i++) { var no = 'T-' + (2066 + S.trucks.length + 1); S.trucks.push({ no: no, quote: q.no, ql: lineQls(l)[i], spec: l.spec, detail: l.detail, price: l.unitPrice, ordered: 'Today', eta: l.eta || 'TBD', where: 'Awaiting build slot', stage: 0, stages: [['Ordered', 'Today'], ['In production', ''], ['Built, in transit', ''], ['Prep at CTOS', ''], ['Delivery', l.eta || '']] }); made.push(no); mine.push(no); } l.orderNo = mine.join(', '); });
       q.note = 'Buyer\u2019s order signed. Orders ' + made.join(', ') + '.'; q.rboDoc = 'RBO-' + q.no.replace('Q-', '') + '.pdf';
       S.salesforce.lastSync = 'Just now'; save();
       addNotification({ title: q.no + ' buyer\u2019s order signed', text: money(total) + '. Orders ' + made.join(', ') + ' are building; track each one on the quote.', href: 'quote.html?q=' + q.no });
@@ -478,7 +499,7 @@
     var ch = $('q-changes'); if (ch) ch.addEventListener('click', function () { flowTicket({ subject: 'Changes to ' + q.no, text: 'What should be different on this quote? Sarah revises it in Salesforce and the new version shows here.' }); });
     var d = $('q-decline'); if (d) d.addEventListener('click', function () { confirmInline(side, 'Decline ' + q.no + '? Sarah will be told, and you can ask for a revised quote any time.', 'Decline', function () { q.stage = 'declined'; q.updated = 'Today'; S.salesforce.lastSync = 'Just now'; save(); toast(q.no + ' declined.'); renderPage(); }); });
     var sg = $('q-sign'); if (sg) sg.addEventListener('click', function (e) { e.preventDefault(); confirmInline(side, 'This opens the DocuSign envelope for the buyer\u2019s order. For the demo, signing here records the signature on ' + q.no + ' and places the orders.', 'Sign as ' + personaInfo().name, placeOrders); });
-    var inv = $('q-invoice'); if (inv) inv.addEventListener('click', function () { confirmInline(side, 'Issue an invoice for ' + q.no + ', ' + money(total) + ' before tax and title?', 'Request invoice', function () { requestInvoice(q); }); });
+    var inv = $('q-invoice'); if (inv) inv.addEventListener('click', function () { flowInvoiceQls(q); });
     var fin = $('q-finance'); if (fin) fin.addEventListener('click', function () { flowCreditApp({ financing: true, quote: q, amount: total }); });
     var rs = $('q-rbo-send'); if (rs) rs.addEventListener('click', function () { q.stage = 'rboSent'; q.updated = 'Today'; q.rboSentOn = 'Today'; S.salesforce.lastSync = 'Just now'; save(); addNotification({ title: q.no + ' buyer\u2019s order ready to sign', text: 'Sent by DocuSign to ' + (q.terms || defaultTerms()).payer.split(' · ')[0] + '. Open the quote to sign.', href: 'quote.html?q=' + q.no }); toast('Buyer\u2019s order generated in Conga and sent for signature.'); renderPage(); });
     var rg = $('q-rbo-signed'); if (rg) rg.addEventListener('click', function () { confirmInline(side, 'Record the signed buyer\u2019s order for ' + q.no + ' and create the orders?', 'Record signature', placeOrders); });
@@ -1111,7 +1132,7 @@
   function flowTruck(t, row) {
     openDrawer({
       kind: t.stages[t.stage][0], title: truckLabel(t), meta: t.spec + ' · ' + t.detail,
-      body: '<dl class="dr-facts"><dt>Order</dt><dd>' + esc(truckLabel(t)) + ' · placed ' + t.ordered + ' <span class="muted mono">' + t.no + '</span></dd>' + (t.quote ? '<dt>Salesforce</dt><dd>' + t.quote + ' · ' + t.ql + '</dd>' : '') + '<dt>Expected</dt><dd>' + esc(t.eta) + '</dd><dt>Built at</dt><dd>' + esc(t.where) + '</dd><dt>Price</dt><dd>' + money(t.price) + '</dd></dl><ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>',
+      body: '<dl class="dr-facts"><dt>Order</dt><dd>' + esc(truckLabel(t)) + ' · placed ' + t.ordered + ' <span class="muted mono">' + t.no + '</span></dd>' + (t.quote ? '<dt>Salesforce</dt><dd>' + t.quote + ' · ' + t.ql + '</dd>' : '') + (t.invoice ? '<dt>Invoice</dt><dd><a href="billing.html" class="lnk">' + esc(t.invoice) + '</a></dd>' : '') + '<dt>Expected</dt><dd>' + esc(t.eta) + '</dd><dt>Built at</dt><dd>' + esc(t.where) + '</dd><dt>Price</dt><dd>' + money(t.price) + '</dd></dl><ol class="stages" aria-label="Build progress">' + stagesHtml(t.stages, t.stage) + '</ol>',
       foot: '<a href="#" class="btn btn-ghost">Build sheet</a><button type="button" class="lnk" id="t-save-build">Save as preferred build</button><a href="team.html" class="lnk">Ask Sarah a question</a>', row: row,
       after: function () { $('t-save-build').addEventListener('click', function () { flowSaveBuild({ spec: t.spec, detail: t.detail, last: t.ordered + ' · order ' + t.no, lastPrice: t.price }); }); }
     });
@@ -2060,7 +2081,7 @@
       var tk = trucks();
       if (tk.length) {
         var qno = nextReq(), sf = '006Hs00000' + Math.random().toString(36).slice(2, 7).toUpperCase();
-        S.quotes.unshift({ no: qno, req: qno, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: tk.map(function (x, i) { var it = x.it, ln = x.ln; return { ql: 'QL-0' + (QL_SEQ + S.quotes.reduce(function (n, q) { return n + q.lines.length; }, 0) + i), spec: invTitle(it), detail: (it.cond === 'new' ? 'New' : 'Used') + ' · ' + it.chassis + ' · ' + it.spec + ' · stock ' + it.stock, qty: ln.qty || 1, unitPrice: 0, eta: '', items: (it.item ? [[it.item, '', it.year + ' ' + it.itemName + (it.cond === 'used' ? ', CERTIFIED USED' : ''), 'Requested', 0, 0, 0, 0]] : []).concat((ln.options || []).map(function (id) { var o = stockOptions(it).filter(function (x) { return x[0] === id; })[0]; return o ? [o[0], '', o[1].toUpperCase(), '', o[2], 0, 0, 0] : null; }).filter(Boolean)) }; }), note: ($('t-by').value ? 'Needed by ' + $('t-by').value + '. ' : '') + ($('t-trade').value ? 'Trade-in: ' + $('t-trade').value + '.' : '') });
+        S.quotes.unshift({ no: qno, req: qno, sfId: sf, stage: 'requested', requested: 'Today', updated: 'Today', owner: 'Sarah Mitchell', validUntil: '', terms: defaultTerms(), lines: (function () { var off = 0; return tk.map(function (x, i) { var it = x.it, ln = x.ln, ql = nextQl(off); off += (ln.qty || 1); return { ql: ql, spec: invTitle(it), detail: (it.cond === 'new' ? 'New' : 'Used') + ' · ' + it.chassis + ' · ' + it.spec + ' · stock ' + it.stock, qty: ln.qty || 1, unitPrice: 0, eta: '', items: (it.item ? [[it.item, '', it.year + ' ' + it.itemName + (it.cond === 'used' ? ', CERTIFIED USED' : ''), 'Requested', 0, 0, 0, 0]] : []).concat((ln.options || []).map(function (id) { var o = stockOptions(it).filter(function (x) { return x[0] === id; })[0]; return o ? [o[0], '', o[1].toUpperCase(), '', o[2], 0, 0, 0] : null; }).filter(Boolean)) }; }); })(), note: ($('t-by').value ? 'Needed by ' + $('t-by').value + '. ' : '') + ($('t-trade').value ? 'Trade-in: ' + $('t-trade').value + '.' : '') });
         S.salesforce.lastSync = 'Just now';
         addNotification({ title: 'Request ' + qno + ' sent to Sarah', text: tk.reduce(function (n, x) { return n + (x.ln.qty || 1); }, 0) + ' truck' + (tk.length > 1 || tk[0].ln.qty > 1 ? 's' : '') + ' from stock. She confirms availability and pricing, usually within a business day.', href: 'quote.html?q=' + qno });
         made.push('quote request ' + qno); T.trucks = [];
